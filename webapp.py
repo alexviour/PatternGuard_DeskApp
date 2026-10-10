@@ -34,6 +34,24 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_IMAGE_PIXELS = 20_000_000
 MAX_CACHED_RESULTS = 5
 RESULT_TTL_SECONDS = 30 * 60
+WALLPAPER_GROUP_EXPLANATIONS = {
+    "p1": "No non-trivial rotation or mirror symmetry was detected.",
+    "p2": "The pattern shows 180-degree rotational symmetry.",
+    "pm": "The pattern shows mirror symmetry along at least one direction.",
+    "p4": "The pattern shows four-fold rotational symmetry.",
+    "p4m": (
+        "The pattern shows four-fold rotational symmetry together with "
+        "mirror symmetry."
+    ),
+    "pmm": (
+        "The pattern shows two-fold rotational symmetry and mirror symmetry "
+        "along two perpendicular directions."
+    ),
+    "cmm": (
+        "The pattern shows two-fold rotational symmetry with intersecting "
+        "mirror directions in a centered lattice."
+    ),
+}
 RESULTS = OrderedDict()
 RESULTS_LOCK = threading.Lock()
 PROCESSING_LOCK = threading.Lock()
@@ -54,6 +72,65 @@ def create_app():
     def index():
         return render_template("index.html")
 
+    @app.get("/about")
+    def about():
+        team_members = (
+            {
+                "name": "Ma. Lourdes Alexandra F. Reyes",
+                "role": "Developer",
+                "image": "5.png",
+            },
+            {
+                "name": "Close Anne B. Sario",
+                "role": "Developer",
+                "image": "4.png",
+            },
+        )
+        adviser = {
+            "name": "Dr. Francis F. Balahadia",
+            "role": "Project Adviser",
+            "image": "3.png",
+        }
+        return render_template(
+            "about.html", team_members=team_members, adviser=adviser
+        )
+
+    @app.get("/about/team/<filename>")
+    def about_team_image(filename):
+        if filename not in {"3.png", "4.png", "5.png"}:
+            abort(404)
+        image_path = BASE_DIR / "about us" / filename
+        if not image_path.is_file():
+            abort(404)
+        return send_file(image_path, mimetype="image/png")
+
+    @app.get("/references/<slug>")
+    def reference_detail(slug):
+        item = next(
+            (reference for reference in REFERENCE_ITEMS if reference["slug"] == slug),
+            None,
+        )
+        if item is None:
+            abort(404)
+        try:
+            sample_index = int(request.args.get("sample", 0))
+        except ValueError:
+            sample_index = 0
+        sample_index = max(0, min(sample_index, len(item["sample_paths"]) - 1))
+        sample_paths = item["sample_paths"]
+        return render_template(
+            "reference_detail.html",
+            item=item,
+            sample_index=sample_index,
+            sample=sample_paths[sample_index],
+            previous_index=max(0, sample_index - 1),
+            next_index=min(len(sample_paths) - 1, sample_index + 1),
+            sample_urls=[
+                f"/references/{item['slug']}/images/{path.name}"
+                for path in sample_paths
+            ],
+        )
+
     @app.get("/references/<slug>/image")
     def reference_image(slug):
         item = next(
@@ -63,6 +140,26 @@ def create_app():
         if item is None or not item["image_path"].is_file():
             abort(404)
         return send_file(item["image_path"], mimetype="image/png")
+
+    @app.get("/references/<slug>/images/<filename>")
+    def reference_sample(slug, filename):
+        item = next(
+            (reference for reference in REFERENCE_ITEMS if reference["slug"] == slug),
+            None,
+        )
+        if item is None:
+            abort(404)
+        sample_path = next(
+            (
+                path
+                for path in item["sample_paths"]
+                if path.name == filename
+            ),
+            None,
+        )
+        if sample_path is None or not sample_path.is_file():
+            abort(404)
+        return send_file(sample_path, mimetype="image/png")
 
     @app.get("/wallpaper-group-guide")
     def wallpaper_group_guide():
@@ -199,6 +296,14 @@ def _get_classifier():
     return _classifier
 
 
+def _reference_for_classification(category, subclass):
+    slug = f"{category.lower()}-{subclass.lower().replace(' ', '-')}"
+    return next(
+        (item for item in REFERENCE_ITEMS if item["slug"] == slug),
+        None,
+    )
+
+
 def _encode_png(image):
     output = io.BytesIO()
     Image.fromarray(image).save(output, format="PNG")
@@ -253,6 +358,13 @@ def _analyze_image(original_rgb):
         subclass = classification["subclass"]
         subclass_id = f"{category.lower()}_{subclass.lower().replace(' ', '_')}"
         metadata = TEXTILE_METADATA.get(subclass_id, {})
+        reference_item = _reference_for_classification(category, subclass)
+        english_name = (
+            reference_item["english_name"] if reference_item else ""
+        )
+        commonly_used_by = (
+            reference_item["commonly_used_by"] if reference_item else ""
+        )
         cultural_description = metadata.get(
             "description", "No description is available for this textile."
         )
@@ -272,6 +384,8 @@ def _analyze_image(original_rgb):
             "The image was not confidently identified as a supported textile."
         )
         cultural_background = "Cultural context is unavailable for this prediction."
+        english_name = ""
+        commonly_used_by = ""
         source = "N/A"
         classification_text = (
             "Unsupported or uncertain input: not confidently recognized "
@@ -286,19 +400,73 @@ def _analyze_image(original_rgb):
         subclass = ""
         cultural_description = "Classification metadata is unavailable."
         cultural_background = "Cultural context is unavailable."
+        english_name = ""
+        commonly_used_by = ""
         source = "N/A"
         classification_text = "Classification unavailable."
         confidence_text = "Confidence: --"
 
     group = str(detected_group) if detected_group else "N/A"
     score_text = "N/A" if no_defect_detected else f"{sfs_score:.2f}%"
+    if no_defect_detected:
+        summary_title = "No repair was indicated by this audit"
+        summary_text = (
+            "The current detection thresholds did not identify any areas "
+            "for reconstruction. This is an automated screening result, not "
+            "a guarantee that the textile has no damage."
+        )
+        score_interpretation = (
+            "The SFS is shown as N/A because no detected defect required a "
+            "repair assessment. The pixel-mask metrics also have no "
+            "independent ground-truth damage labels: when the detected mask "
+            "is empty, the metric formulas return default values for some "
+            "rates, so those values should not be read as measured defect "
+            "detection accuracy."
+        )
+    else:
+        summary_title = (
+            "Detected areas were reconstructed"
+            if sfs_score >= 95.0
+            else "Review the reconstruction before relying on it"
+        )
+        summary_text = (
+            f"The audit marked {int(np.count_nonzero(defect_mask)):,} pixels "
+            "in the 256 × 256 analysis image as possible defects, then "
+            "attempted to reconstruct those areas from repeating textile "
+            "patterns. Review the original, detected-area heatmap, and "
+            "reconstruction side by side."
+        )
+        score_interpretation = (
+            f"The Symmetry Fidelity Score is {sfs_score:.2f}%. The desktop "
+            "app uses 95% as its display threshold; this is a project-defined "
+            "indicator, not a validated guarantee of restoration quality. "
+            "Compare the images and the individual metrics before accepting "
+            "the result."
+        )
+    wallpaper_explanation = WALLPAPER_GROUP_EXPLANATIONS.get(
+        group,
+        "The detected repeat did not match one of the listed symmetry "
+        "groups, or classification was unavailable.",
+    )
     details = (
         f"Classification Result:\n{classification_text}\n{confidence_text}\n\n"
-        f"Pattern analysis detected lattice sizes A1 = {a1:.1f}, "
-        f"A2 = {a2:.1f} and wallpaper group {group}.\n"
-        "Defect detection combines local texture deviation and dark-spot "
-        "thresholding. Detected areas are reconstructed using lattice-guided "
-        "patch matching with an inpainting fallback.\n\n"
+        f"Audit summary: {summary_text}\n\n"
+        f"Pattern analysis estimated repeat spacing A1 = {a1:.1f} and "
+        f"A2 = {a2:.1f} pixels in the 256 × 256 analysis image. It classified "
+        f"the wallpaper group as {group}: {wallpaper_explanation}\n\n"
+        "Possible defects are detected by combining dark-pixel thresholding "
+        "with local texture-deviation thresholds. Reconstruction searches "
+        "for matching clean patches aligned to the estimated lattice, with "
+        "an inpainting fallback when no matching patch is found.\n\n"
+        "Metric definitions: SSIM measures structural similarity in pixels "
+        "outside the detected mask; accuracy combines the fraction of masked "
+        "pixels changed by reconstruction (60%) and the fraction of unmasked "
+        "pixels preserved (40%); recall, false positive rate, and IoU compare "
+        "the detected mask with pixels changed by the reconstruction, not "
+        "with independently labeled ground-truth damage. SFS combines "
+        "accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive "
+        "rate (15%), and IoU (10%), with an additional penalty for changes "
+        "outside the detected mask.\n\n"
         f"SSIM: {ssim_val:.2f}%\n"
         f"Symmetry Fidelity Score: {score_text}\n"
         f"Accuracy: {accuracy:.2f}%\n"
@@ -328,7 +496,15 @@ def _analyze_image(original_rgb):
             "confidence": confidence_text,
             "description": cultural_description,
             "background": cultural_background,
+            "english_name": english_name,
+            "commonly_used_by": commonly_used_by,
             "source": source,
+        },
+        "interpretation": {
+            "title": summary_title,
+            "summary": summary_text,
+            "sfs": score_interpretation,
+            "wallpaper_group": wallpaper_explanation,
         },
         "metrics": {
             "sfs": score_text,

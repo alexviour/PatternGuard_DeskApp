@@ -7,12 +7,14 @@ REFERENCE_ITEMS = (
     {
         "slug": "pinilian-sinan-agatul",
         "title": "Pinilian Sinan Agatul",
-        "subtitle": "Itneg & Tinguian Heritage | River Crab & Tool Brocade",
+        "english_name": "Blanket with crab-like design",
         "description": (
-            "Elevated geometric forms resembling crabs, often interlaced "
-            "with skeiner-like (sinan-sanga) weaving tool designs on a "
-            "striped base."
+            "A three-paneled brocade-woven textile with indigo and red "
+            "stripes, small diamond and crab-like motifs, and white "
+            "embroidered joinery and borders."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg",
+        "source_url": "https://www.bahayugnayan.org/functional-items/pinilian-(sinan-agatul)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -23,11 +25,13 @@ REFERENCE_ITEMS = (
     {
         "slug": "pinilian-sinan-bayabas",
         "title": "Pinilian Sinan Bayabas",
-        "subtitle": "Ilocano Heritage | Guava Fruit & Medicinal Leaf Brocade",
+        "english_name": "Blanket with guava leaves-like design",
         "description": (
-            "Elevated brocade designs featuring guava leaves and fruit, "
-            "occasionally merged with rice mortar (sinan-lasong) patterns."
+            "A three-paneled blanket featuring guava leaves and "
+            "skeiner-like motifs on a plaid red-and-black background."
         ),
+        "commonly_used_by": "Abra, Tinguian, Ineg",
+        "source_url": "https://www.bahayugnayan.org/functional-items/pinilian-(sinan-bayabas)-(e)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -38,12 +42,14 @@ REFERENCE_ITEMS = (
     {
         "slug": "pinilian-sinan-bituwon",
         "title": "Pinilian Sinan Bituwon",
-        "subtitle": "Ilocano & Itneg Heritage | Eight-Point Celestial Star Brocade",
+        "english_name": "Blanket with star design",
         "description": (
-            "Symmetrical figures of four-point or eight-point stars in "
-            "relief created with vibrant white or contrasting yarns on a "
-            "striped backdrop."
+            "A three-paneled brocade blanket with white star-like motifs "
+            "on a red and blue striped background. Yellow stylized stitching "
+            "joins the side panels to the middle panel."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg",
+        "source_url": "https://www.bahayugnayan.org/functional-items/pinilian-(sinan-bituwon)-(a)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -54,11 +60,13 @@ REFERENCE_ITEMS = (
     {
         "slug": "pinilian-sinan-init",
         "title": "Pinilian Sinan Init",
-        "subtitle": "Ilocano & Itneg Heritage | Solar Ray Starburst Brocade",
+        "english_name": "Blanket with sun-like design",
         "description": (
-            "Elevated radial geometric structures featuring diamond-shaped "
-            "or starburst-like rays extending from a central point."
+            "A three-paneled blanket featuring sun-like motifs on a red "
+            "and indigo-striped background."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg",
+        "source_url": "https://www.bahayugnayan.org/functional-items/pinilian-(sinan-init)-(a)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -69,12 +77,14 @@ REFERENCE_ITEMS = (
     {
         "slug": "pinilian-sinan-kabalyo",
         "title": "Pinilian Sinan Kabalyo",
-        "subtitle": "Itneg & Tinguian Heritage | Ancestral Sacred Horse Brocade",
+        "english_name": "Blanket with horse-like motifs",
         "description": (
-            "Distinct decorative brocade representations of horses, "
-            "frequently arranged in alternating bands alongside diamond "
-            "patterns over striped or checkered background sections."
+            "A three-paneled brocade-woven blanket featuring double "
+            "horse-like motifs, flower-like motifs, and nail-like "
+            "embroidery patterns."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg",
+        "source_url": "https://www.bahayugnayan.org/functional-items/pinilian-(sinan-kabalyo)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -85,12 +95,14 @@ REFERENCE_ITEMS = (
     {
         "slug": "pinilian-sinan-sabong",
         "title": "Pinilian Sinan Sabong",
-        "subtitle": "Ilocano & Itneg Heritage | Blooming Floral Brocade",
+        "english_name": "Blanket with flower-like design",
         "description": (
-            "Elevated, textured brocade patterns illustrating floral "
-            "designs, frequently bordered by diamond-shaped geometric "
-            "elements."
+            "A three-paneled pinilian blanket featuring flowers and "
+            "diamond-like motifs on a red, maroon, and indigo plaid "
+            "background."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg",
+        "source_url": "https://www.bahayugnayan.org/functional-items/pinilian-(sinan-sabong)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -101,11 +113,15 @@ REFERENCE_ITEMS = (
     {
         "slug": "binakol-concha-concha",
         "title": "Binakol Concha-concha",
-        "subtitle": "Ilocano Heritage | Capiz Window Lattice Motif",
+        "english_name": "Tattered capiz window design",
         "description": (
-            "Geometric patterns resembling grids of squares and "
-            "translucent-look blocks embedded on a plaid background."
+            "A three-paneled woven textile with capiz window-inspired "
+            "design on a plaid background. Traditional embroidery using "
+            "yellow threads was used to join the panels and border the "
+            "blanket."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg, Ilocos, Ilocano",
+        "source_url": "https://www.bahayugnayan.org/functional-items/binakol-(rinitrit-concha-concha)-(a)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -116,11 +132,15 @@ REFERENCE_ITEMS = (
     {
         "slug": "binakol-kinkinelleng",
         "title": "Binakol Kinkinelleng",
-        "subtitle": "Ilocano & Itneg Heritage | Terraced Rice Field Grid",
+        "english_name": "Blanket with rice field-like design",
         "description": (
-            "Woven using double-toned basket weaves that combine positive "
-            "and negative blocks of squares and rectangles of varying sizes."
+            "A four-paneled blanket with a red, white, and yellow rice "
+            "field-like design. Embroidered joineries and borders are used "
+            "to attach the panels together and secure the edges, "
+            "respectively."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg, Ilocos, Ilocano",
+        "source_url": "https://www.bahayugnayan.org/functional-items/binakol-(kinkinelleng)-(a)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -131,12 +151,14 @@ REFERENCE_ITEMS = (
     {
         "slug": "binakol-kulalabang",
         "title": "Binakol Kulalabang",
-        "subtitle": "Itneg & Tinguian Heritage | Butterfly Wing Motif",
+        "english_name": "Combination of binakol and plaid designs",
         "description": (
-            "A geometric plaid Binakol pattern with multiple panels, "
-            "typically depicting strong contrasting colors such as red, "
-            "white, and blue."
+            "A four-paneled woven textile with red and blue plaid binakol "
+            "design. The white areas of the textile have faint binakol "
+            "patterns that are only visible when looked at closely."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg, Ilocos, Ilocano",
+        "source_url": "https://www.bahayugnayan.org/functional-items/binakol-(kulalabang)-(a)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -147,12 +169,13 @@ REFERENCE_ITEMS = (
     {
         "slug": "binakol-kusikus",
         "title": "Binakol Kusikus",
-        "subtitle": "Ilocano & Itneg Heritage | Optical Whirlwind Grid",
+        "english_name": "Whirlpool/Whirlwind design",
         "description": (
-            "Concentric optical grids, repeating geometric spirals, or "
-            "dizzying interlocking squares that expand outward from a "
-            "central point."
+            "A three-paneled binakol blanket in indigo and white with red "
+            "plaid patterns running along its length and width."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg, Ilocos, Ilocano",
+        "source_url": "https://www.bahayugnayan.org/functional-items/binakol-(kusikus%2Falipugpug)-(a)-",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -163,14 +186,14 @@ REFERENCE_ITEMS = (
     {
         "slug": "binakol-paddak-ti-pusa",
         "title": "Binakol Paddak Ti Pusa",
-        "subtitle": "Ilocano & Itneg Heritage | Cat's Paw Footprint Motif",
+        "english_name": "Blanket with cat's paw design",
         "description": (
-            "Exhibits symmetrical, multi-block repeating geometric patterns "
-            "designed to suggest the mark of a cat's paw. In mathematical "
-            "symmetry analysis of Ilocano textiles, it falls under planar "
-            "repeating groups (pmm) with axes of horizontal and vertical "
-            "reflection."
+            "A three-paneled binakol blanket in red and white with green "
+            "and yellow plaids that run across the length and width of the "
+            "cloth."
         ),
+        "commonly_used_by": "Abra, Tinguian, Itneg, Ilocos, Ilocano",
+        "source_url": "https://www.bahayugnayan.org/functional-items/binakol-(sinan-paddak-ti-pusa)",
         "image_path": (
             BASE_DIR
             / "dataset"
@@ -179,3 +202,17 @@ REFERENCE_ITEMS = (
         ),
     },
 )
+
+
+def _with_dataset_samples(item):
+    image_path = item["image_path"]
+    sample_paths = sorted(image_path.parent.glob("*.png"))
+    if image_path not in sample_paths:
+        sample_paths.insert(0, image_path)
+    else:
+        sample_paths.remove(image_path)
+        sample_paths.insert(0, image_path)
+    return {**item, "sample_paths": tuple(sample_paths)}
+
+
+REFERENCE_ITEMS = tuple(_with_dataset_samples(item) for item in REFERENCE_ITEMS)

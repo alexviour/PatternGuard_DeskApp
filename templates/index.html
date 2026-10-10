@@ -17,13 +17,14 @@
         <a href="{{ url_for('index') }}#upload">Audit</a>
         <a href="#reference-guide">Reference guide</a>
         <a href="#wallpaper-guide">Wallpaper groups</a>
+        <a href="{{ url_for('about') }}">About us</a>
       </nav>
     </header>
 
     <main class="page-shell">
       <section class="intro">
-        <p class="eyebrow">TEXTILE CARE, MADE ACCESSIBLE</p>
-        <h1>Understand and restore woven patterns.</h1>
+        <p class="eyebrow">TEXTILE, MADE ACCESSIBLE</p>
+        <h1>Understand and restore Filipino woven patterns.</h1>
         <p class="intro-copy">
           Upload a Pinilian or Binakol textile image to identify its pattern,
           inspect possible damage, and create a reconstruction report.
@@ -53,7 +54,6 @@
             <p class="file-name" id="file-name" aria-live="polite">No image selected</p>
             <button class="button button-primary" type="submit">Analyze textile</button>
           </form>
-          <p class="privacy-note">Your image is processed by this app and temporary result files expire after 30 minutes.</p>
         </section>
       {% else %}
         <section class="results-section" aria-labelledby="results-title">
@@ -71,6 +71,26 @@
           {% if result.no_defect_message %}
             <div class="notice notice-success" role="status">{{ result.no_defect_message }}</div>
           {% endif %}
+
+          <section class="interpretation-card" aria-labelledby="interpretation-title">
+            <p class="eyebrow">INTERPRETABLE AUDIT RESULT</p>
+            <h3 id="interpretation-title">{{ result.interpretation.title }}</h3>
+            <p>{{ result.interpretation.summary }}</p>
+            <p>{{ result.interpretation.sfs }}</p>
+          </section>
+
+          <section class="symmetry-card" aria-labelledby="symmetry-title">
+            <div>
+              <p class="eyebrow">REPEATING-PATTERN SYMMETRY</p>
+              <h3 id="symmetry-title">Wallpaper group: {{ result.metrics.wallpaper_group }}</h3>
+              <p>{{ result.interpretation.wallpaper_group }}</p>
+              <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
+            </div>
+            <dl class="lattice-values">
+              <div><dt>A1 repeat spacing</dt><dd>{{ result.metrics.a1 }} px</dd></div>
+              <div><dt>A2 repeat spacing</dt><dd>{{ result.metrics.a2 }} px</dd></div>
+            </dl>
+          </section>
 
           <div class="image-grid">
             {% for name, title in [('original', 'Original'), ('heatmap', 'Detected areas'), ('restored', 'Reconstruction')] %}
@@ -94,9 +114,6 @@
             </div>
             <dl class="metric-grid">
               <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
-              <div class="metric"><dt>Wallpaper group</dt><dd>{{ result.metrics.wallpaper_group }}</dd></div>
-              <div class="metric"><dt>Lattice A1</dt><dd>{{ result.metrics.a1 }}</dd></div>
-              <div class="metric"><dt>Lattice A2</dt><dd>{{ result.metrics.a2 }}</dd></div>
               <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
               <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd></div>
               <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd></div>
@@ -104,12 +121,30 @@
               <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd></div>
               <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
             </dl>
+            <details class="metric-help">
+              <summary>What do these metrics mean?</summary>
+              <dl class="metric-definitions">
+                <div><dt>Symmetry Fidelity Score (SFS)</dt><dd>A composite score using accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive rate (15%), and IoU (10%), with a penalty for background changes. The desktop app uses 95% as a display threshold; it is not a validated guarantee.</dd></div>
+                <div><dt>Accuracy</dt><dd>A weighted score: 60% of masked pixels changed during reconstruction plus 40% of unmasked pixels preserved.</dd></div>
+                <div><dt>Recall</dt><dd>Of all pixels in the detected mask, the percentage also changed by reconstruction.</dd></div>
+                <div><dt>False positive rate</dt><dd>Of pixels outside the detected mask, the percentage changed by reconstruction.</dd></div>
+                <div><dt>Intersection over Union (IoU)</dt><dd>Overlap between the detected mask and changed pixels, divided by their combined area.</dd></div>
+                <div><dt>Structural Similarity (SSIM)</dt><dd>Structural similarity between the input and reconstruction in regions outside the detected mask.</dd></div>
+              </dl>
+              <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the detected mask with pixels changed by reconstruction. If no defects are detected, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
+            </details>
           </section>
 
           <section class="culture-card" aria-labelledby="culture-title">
             <p class="eyebrow">CULTURAL CONTEXT</p>
             <h3 id="culture-title">{{ result.classification.text }}</h3>
             <p class="confidence">{{ result.classification.confidence }}</p>
+            {% if result.classification.english_name %}
+              <p class="reference-english-name">{{ result.classification.english_name }}</p>
+            {% endif %}
+            {% if result.classification.commonly_used_by %}
+              <p class="reference-common-use"><strong>Commonly used by/in:</strong> {{ result.classification.commonly_used_by }}</p>
+            {% endif %}
             <p>{{ result.classification.description }}</p>
             <p>{{ result.classification.background }}</p>
             <p class="source">Source: {{ result.classification.source }}</p>
@@ -121,18 +156,22 @@
         <div class="guide-heading">
           <p class="eyebrow">EDUCATIONAL ARCHIVE / TEXTILE FIELD GUIDE</p>
           <h2 id="reference-title">Educational Textile Reference Guide</h2>
-          <p>Select a textile to view a larger sample and its pattern notes.</p>
+          <p>Select a textile card to view a larger sample and browse its dataset images.</p>
         </div>
         <div class="reference-grid">
           {% for item in reference_items %}
-            <article class="reference-card">
+            <a class="reference-card" href="{{ url_for('reference_detail', slug=item.slug) }}" aria-label="View {{ item.title }} reference and dataset samples">
               <img src="{{ url_for('reference_image', slug=item.slug) }}" alt="Reference sample: {{ item.title }}" loading="lazy">
               <div class="reference-copy">
                 <h3>{{ item.title }}</h3>
-                <p class="reference-subtitle">{{ item.subtitle }}</p>
+                <p class="reference-english-name">{{ item.english_name }}</p>
                 <p>{{ item.description }}</p>
+                {% if item.commonly_used_by is defined %}
+                  <p class="reference-sample-count">Commonly used by/in: {{ item.commonly_used_by }}</p>
+                {% endif %}
+                <p class="reference-sample-count">{{ item.sample_paths|length }} dataset samples · View larger →</p>
               </div>
-            </article>
+            </a>
           {% endfor %}
         </div>
       </section>
@@ -148,7 +187,7 @@
             <li><strong>Use high-resolution images</strong><span>Clear focus allows a more precise restoration.</span></li>
           </ul>
         </details>
-        <details class="guide-card" id="wallpaper-guide">
+        <details class="guide-card" id="wallpaper-guide" {% if result %}open{% endif %}>
           <summary>Wallpaper group guide <span>Understand the detected symmetry group</span></summary>
           <img class="wallpaper-guide-image" src="{{ url_for('wallpaper_group_guide') }}" alt="Wallpaper group classification reference chart" loading="lazy">
         </details>
@@ -167,6 +206,7 @@
             imageInput.files.length ? imageInput.files[0].name : "No image selected";
         });
       }
+
     </script>
   </body>
 </html>

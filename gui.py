@@ -955,10 +955,6 @@ class PatternGuardApp(tk.Tk):
                              font=("Segoe UI", 9, "bold"), anchor="w")
             title.pack(fill="x", padx=8)
 
-            subtitle = tk.Label(item_frame, text=item["subtitle"], bg="#F8F2EA", fg=self.colors["text_grey"],
-                                font=("Segoe UI", 8), anchor="w")
-            subtitle.pack(fill="x", padx=8, pady=(0, 4))
-
             btn = tk.Button(
                 item_frame,
                 text="View Details",
@@ -1039,14 +1035,6 @@ class PatternGuardApp(tk.Tk):
         ).pack(fill="x", padx=24)
         tk.Label(
             detail_card,
-            text=item["subtitle"],
-            bg="#FFFDF8",
-            fg=self.colors["maroon"],
-            font=("Segoe UI", 12, "bold"),
-            anchor="w",
-        ).pack(fill="x", padx=24, pady=(4, 12))
-        tk.Label(
-            detail_card,
             text=item["description"],
             bg="#FFFDF8",
             fg=self.colors["text_dark"],
@@ -1054,7 +1042,16 @@ class PatternGuardApp(tk.Tk):
             anchor="w",
             justify="left",
             wraplength=900,
-        ).pack(fill="x", padx=24, pady=(0, 24))
+        ).pack(fill="x", padx=24, pady=(12, 24))
+        if item.get("commonly_used_by"):
+            tk.Label(
+                detail_card,
+                text=f"Commonly used by/in: {item['commonly_used_by']}",
+                bg="#FFFDF8",
+                fg=self.colors["text_grey"],
+                font=("Segoe UI", 10, "bold"),
+                anchor="w",
+            ).pack(fill="x", padx=24, pady=(0, 24))
         self.reference_detail_page.pack(fill="both", expand=True)
         self.show_page("reference")
         self.canvas.update_idletasks()
@@ -1121,14 +1118,6 @@ class PatternGuardApp(tk.Tk):
                     cursor="hand2",
                 )
                 title.pack(fill="x", padx=14)
-                tk.Label(
-                    card,
-                    text=item["subtitle"],
-                    bg="#FFFDF8",
-                    fg=self.colors["text_grey"],
-                    font=("Segoe UI", 10),
-                    anchor="w",
-                ).pack(fill="x", padx=14, pady=(3, 10))
                 for widget in (card, image_label, title):
                     widget.bind(
                         "<Button-1>",
