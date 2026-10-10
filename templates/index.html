@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#392019">
+    <title>PatternGuard | Textile Audit</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('index') }}">
+        <span class="brand-mark" aria-hidden="true">PG</span>
+        <span>PatternGuard</span>
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="{{ url_for('index') }}#upload">Audit</a>
+        <a href="#reference-guide">Reference guide</a>
+        <a href="#wallpaper-guide">Wallpaper groups</a>
+      </nav>
+    </header>
+
+    <main class="page-shell">
+      <section class="intro">
+        <p class="eyebrow">TEXTILE CARE, MADE ACCESSIBLE</p>
+        <h1>Understand and restore woven patterns.</h1>
+        <p class="intro-copy">
+          Upload a Pinilian or Binakol textile image to identify its pattern,
+          inspect possible damage, and create a reconstruction report.
+        </p>
+      </section>
+
+      {% if error %}
+        <div class="notice notice-error" role="alert">{{ error }}</div>
+      {% endif %}
+
+      {% if not result %}
+        <section class="upload-card" id="upload" aria-labelledby="upload-title">
+          <div class="section-heading">
+            <span class="step-number">01</span>
+            <div>
+              <h2 id="upload-title">Start an audit</h2>
+              <p>Choose a clear photo of the textile pattern.</p>
+            </div>
+          </div>
+          <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data">
+            <label class="upload-drop" for="image">
+              <span class="upload-icon" aria-hidden="true">↑</span>
+              <span class="upload-label">Choose an image from your device</span>
+              <span class="upload-help">PNG or JPEG · maximum 10 MB</span>
+              <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required>
+            </label>
+            <p class="file-name" id="file-name" aria-live="polite">No image selected</p>
+            <button class="button button-primary" type="submit">Analyze textile</button>
+          </form>
+          <p class="privacy-note">Your image is processed by this app and temporary result files expire after 30 minutes.</p>
+        </section>
+      {% else %}
+        <section class="results-section" aria-labelledby="results-title">
+          <div class="results-heading">
+            <div>
+              <p class="eyebrow">AUDIT COMPLETE</p>
+              <h2 id="results-title">Textile analysis</h2>
+            </div>
+            <a class="button button-secondary" href="{{ url_for('index') }}">Analyze another image</a>
+          </div>
+
+          {% if result.warning %}
+            <div class="notice notice-warning" role="status">{{ result.warning }}</div>
+          {% endif %}
+          {% if result.no_defect_message %}
+            <div class="notice notice-success" role="status">{{ result.no_defect_message }}</div>
+          {% endif %}
+
+          <div class="image-grid">
+            {% for name, title in [('original', 'Original'), ('heatmap', 'Detected areas'), ('restored', 'Reconstruction')] %}
+              <article class="image-card">
+                <h3>{{ title }}</h3>
+                <div class="image-content">
+                  <img src="{{ url_for('result_image', result_id=result_id, name=name) }}" alt="{{ title }} textile analysis result">
+                  <a class="image-download" href="{{ url_for('result_image', result_id=result_id, name=name, download=1) }}">Download PNG</a>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+
+          <section class="metrics-card" aria-labelledby="metrics-title">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">PATTERN &amp; RESTORATION</p>
+                <h3 id="metrics-title">Audit metrics</h3>
+              </div>
+              <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download PDF report</a>
+            </div>
+            <dl class="metric-grid">
+              <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
+              <div class="metric"><dt>Wallpaper group</dt><dd>{{ result.metrics.wallpaper_group }}</dd></div>
+              <div class="metric"><dt>Lattice A1</dt><dd>{{ result.metrics.a1 }}</dd></div>
+              <div class="metric"><dt>Lattice A2</dt><dd>{{ result.metrics.a2 }}</dd></div>
+              <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
+              <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd></div>
+              <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd></div>
+              <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd></div>
+              <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd></div>
+              <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="culture-card" aria-labelledby="culture-title">
+            <p class="eyebrow">CULTURAL CONTEXT</p>
+            <h3 id="culture-title">{{ result.classification.text }}</h3>
+            <p class="confidence">{{ result.classification.confidence }}</p>
+            <p>{{ result.classification.description }}</p>
+            <p>{{ result.classification.background }}</p>
+            <p class="source">Source: {{ result.classification.source }}</p>
+          </section>
+        </section>
+      {% endif %}
+
+      <section class="reference-section" id="reference-guide" aria-labelledby="reference-title">
+        <div class="guide-heading">
+          <p class="eyebrow">EDUCATIONAL ARCHIVE / TEXTILE FIELD GUIDE</p>
+          <h2 id="reference-title">Educational Textile Reference Guide</h2>
+          <p>Select a textile to view a larger sample and its pattern notes.</p>
+        </div>
+        <div class="reference-grid">
+          {% for item in reference_items %}
+            <article class="reference-card">
+              <img src="{{ url_for('reference_image', slug=item.slug) }}" alt="Reference sample: {{ item.title }}" loading="lazy">
+              <div class="reference-copy">
+                <h3>{{ item.title }}</h3>
+                <p class="reference-subtitle">{{ item.subtitle }}</p>
+                <p>{{ item.description }}</p>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="guide-tools" aria-label="Audit guides">
+        <details class="guide-card">
+          <summary>Capture guide <span>Tips for the best audit results</span></summary>
+          <ul class="capture-tips">
+            <li><strong>Capture overhead</strong><span>Take photos directly from above to prevent perspective skew.</span></li>
+            <li><strong>Ensure even lighting</strong><span>Use balanced light to eliminate unnecessary shadows.</span></li>
+            <li><strong>Keep fabric flat</strong><span>Smooth out wrinkles so the geometric grid stays aligned.</span></li>
+            <li><strong>Frame full context</strong><span>Ensure intact pattern motifs surround the damaged area.</span></li>
+            <li><strong>Use high-resolution images</strong><span>Clear focus allows a more precise restoration.</span></li>
+          </ul>
+        </details>
+        <details class="guide-card" id="wallpaper-guide">
+          <summary>Wallpaper group guide <span>Understand the detected symmetry group</span></summary>
+          <img class="wallpaper-guide-image" src="{{ url_for('wallpaper_group_guide') }}" alt="Wallpaper group classification reference chart" loading="lazy">
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>PatternGuard</span>
+      <span>Automated textile auditing &amp; restoration framework</span>
+    </footer>
+    <script>
+      const imageInput = document.getElementById("image");
+      if (imageInput) {
+        imageInput.addEventListener("change", () => {
+          document.getElementById("file-name").textContent =
+            imageInput.files.length ? imageInput.files[0].name : "No image selected";
+        });
+      }
+    </script>
+  </body>
+</html>
