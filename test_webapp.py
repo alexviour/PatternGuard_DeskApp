@@ -22,21 +22,23 @@ class WebAppTests(unittest.TestCase):
         self.assertIn(b"Educational Textile Reference Guide", response.data)
         self.assertIn(b"Wallpaper group guide", response.data)
         self.assertIn(b"Capture guide", response.data)
+        for item in webapp.REFERENCE_ITEMS:
+            self.assertIn(item["title"].encode(), response.data)
 
-    def test_reference_images_and_wallpaper_guide_are_available(self):
-        for path in (
-            "/references/pinilian-bayabas/image",
-            "/references/pinilian-kabalyo/image",
-            "/references/binakol-kinkinelleng/image",
-            "/references/binakol-kulalabang/image",
-        ):
-            with self.subTest(path=path):
-                response = self.client.get(path)
+    def test_reference_catalog_images_are_available(self):
+        self.assertEqual(len(webapp.REFERENCE_ITEMS), 11)
+
+        for item in webapp.REFERENCE_ITEMS:
+            with self.subTest(title=item["title"]):
+                response = self.client.get(
+                    f"/references/{item['slug']}/image"
+                )
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.mimetype, "image/png")
                 self.assertTrue(response.data.startswith(b"\x89PNG"))
                 response.close()
 
+    def test_wallpaper_guide_is_available(self):
         response = self.client.get("/wallpaper-group-guide")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "image/jpeg")

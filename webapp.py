@@ -26,6 +26,7 @@ from dsp_engine import (
 from evaluation_metrics import calculate_restoration_metrics
 from pattern_classifier import PatternClassifier
 from pdf_exporter import generate_patternguard_pdf
+from reference_data import REFERENCE_ITEMS
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -38,60 +39,6 @@ RESULTS_LOCK = threading.Lock()
 PROCESSING_LOCK = threading.Lock()
 _classifier = None
 _classifier_lock = threading.Lock()
-REFERENCE_ITEMS = (
-    {
-        "slug": "pinilian-bayabas",
-        "title": "Pinilian Bayabas",
-        "subtitle": "Dense botanical lattice",
-        "description": (
-            "A traditionally woven geometric pattern recognized for its "
-            "clustered diagonal rhythm and botanical-like spacing."
-        ),
-        "image": BASE_DIR
-        / "dataset"
-        / "pinilian_sinan_bayabas"
-        / "sinan_bayabas_01.png",
-    },
-    {
-        "slug": "pinilian-kabalyo",
-        "title": "Pinilian Kabalyo",
-        "subtitle": "Balanced repeating rhythm",
-        "description": (
-            "Compact motifs with a consistent textile rhythm that highlight "
-            "disciplined lattice spacing and woven repetition."
-        ),
-        "image": BASE_DIR
-        / "dataset"
-        / "pinilian_sinan_kabalyo"
-        / "sinan_kabalyo_01.png",
-    },
-    {
-        "slug": "binakol-kinkinelleng",
-        "title": "Binakol Kinkinelleng",
-        "subtitle": "Strong diagonal symmetry",
-        "description": (
-            "A bold binakol textile pattern with a pronounced directional "
-            "flow and a visible repeating weave continuity."
-        ),
-        "image": BASE_DIR
-        / "dataset"
-        / "binakol_kinkinelleng"
-        / "kinkinelleng_01.png",
-    },
-    {
-        "slug": "binakol-kulalabang",
-        "title": "Binakol Kulalabang",
-        "subtitle": "High-contrast pattern field",
-        "description": (
-            "A highly textured textile field with rhythmic alternation and "
-            "strong lattice regularity used as a visual benchmark."
-        ),
-        "image": BASE_DIR
-        / "dataset"
-        / "binakol_kulalabang"
-        / "kulalabang_01.png",
-    },
-)
 
 
 def create_app():
@@ -113,9 +60,9 @@ def create_app():
             (reference for reference in REFERENCE_ITEMS if reference["slug"] == slug),
             None,
         )
-        if item is None or not item["image"].is_file():
+        if item is None or not item["image_path"].is_file():
             abort(404)
-        return send_file(item["image"], mimetype="image/png")
+        return send_file(item["image_path"], mimetype="image/png")
 
     @app.get("/wallpaper-group-guide")
     def wallpaper_group_guide():
