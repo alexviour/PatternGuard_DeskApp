@@ -1,4 +1,4 @@
-import os
+﻿import os
 import time
 import threading
 import shutil
@@ -451,7 +451,8 @@ class PatternGuardApp(tk.Tk):
         if len(steps) > 1:
             tk.Label(stepper, text="", bg=self.colors["bg"]).grid(row=0, column=2, sticky="n")
 
-        upload_card = tk.Frame(left, bg="#F5F1EB", highlightbackground=self.colors["border"], highlightthickness=1, bd=0)
+        upload_card = tk.Frame(left, bg="#F5F1EB", highlightbackground=self.colors["border"], highlightthickness=1,
+                               bd=0)
         upload_card.pack(fill="both", expand=True)
 
         title_small = tk.Label(
@@ -475,7 +476,8 @@ class PatternGuardApp(tk.Tk):
         upload_inner = tk.Frame(upload_card, bg="#F5F1EB")
         upload_inner.pack(fill="both", expand=True)
 
-        upload_panel = tk.Frame(upload_inner, bg="#F5F1EB", highlightbackground=self.colors["border"], highlightthickness=1, bd=0)
+        upload_panel = tk.Frame(upload_inner, bg="#F5F1EB", highlightbackground=self.colors["border"],
+                                highlightthickness=1, bd=0)
         upload_panel.pack(fill="x", padx=18, pady=(0, 12))
         upload_panel.configure(height=250)
 
@@ -497,7 +499,8 @@ class PatternGuardApp(tk.Tk):
         )
         self.draw_upload_slot(self.upload_page_canvas)
 
-        selected_frame = tk.Frame(upload_card, bg="#F1E4D5", highlightbackground=self.colors["border"], highlightthickness=1, bd=0)
+        selected_frame = tk.Frame(upload_card, bg="#F1E4D5", highlightbackground=self.colors["border"],
+                                  highlightthickness=1, bd=0)
         selected_frame.pack(fill="x", padx=18, pady=(0, 18))
 
         self.file_row = tk.Frame(selected_frame, bg="#F1E4D5")
@@ -584,14 +587,16 @@ class PatternGuardApp(tk.Tk):
             command=lambda: open_tips_modal(self),
         ).pack(side="left")
 
-        right_panel = tk.Frame(right, bg="#F5F1EB", highlightbackground=self.colors["border"], highlightthickness=1, bd=0)
+        right_panel = tk.Frame(right, bg="#F5F1EB", highlightbackground=self.colors["border"], highlightthickness=1,
+                               bd=0)
         right_panel.pack(fill="both", expand=True)
         preview = tk.Label(right_panel, bg="#E8DCC7", text="", width=26, height=12)
         preview.pack(fill="both", expand=True, padx=16, pady=16)
         self.upload_preview = preview
         self.upload_preview_photo = None
 
-        info_box = tk.Frame(right_panel, bg="#F3E7DA", highlightbackground=self.colors["border"], highlightthickness=1, bd=0)
+        info_box = tk.Frame(right_panel, bg="#F3E7DA", highlightbackground=self.colors["border"], highlightthickness=1,
+                            bd=0)
         info_box.pack(fill="x", padx=16, pady=(0, 16))
         tk.Label(
             info_box,
@@ -620,7 +625,8 @@ class PatternGuardApp(tk.Tk):
             row = tk.Frame(info_box, bg="#F3E7DA")
             row.pack(fill="x", padx=14, pady=2)
             tk.Label(row, text="✓", bg="#F3E7DA", fg="#4E7045", font=("Segoe UI", 10, "bold")).pack(side="left")
-            tk.Label(row, text=text, bg="#F3E7DA", fg=self.colors["text_dark"], font=("Segoe UI", 10)).pack(side="left", padx=(6, 0))
+            tk.Label(row, text=text, bg="#F3E7DA", fg=self.colors["text_dark"], font=("Segoe UI", 10)).pack(side="left",
+                                                                                                            padx=(6, 0))
 
         self.upload_preview.configure(text="Upload preview")
 
@@ -762,7 +768,7 @@ class PatternGuardApp(tk.Tk):
         )
         tips_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
-        #CLASSIFICATION CARD
+        # CLASSIFICATION CARD
         self.card_identified_textile = self.create_card(
             parent, "Textile Classification", "", has_border=True
         )
@@ -818,7 +824,7 @@ class PatternGuardApp(tk.Tk):
         self.description_text.configure(state="disabled")
 
         self.card_reference = self.create_card(
-            parent, "Educational Textile Reference Guide", "📚"
+            parent, "Accepted Textiles for Restoration", "📚"
         )
         self.card_reference.pack(fill="x", pady=(0, 20))
         self._build_reference_guide_cards(self.card_reference)
@@ -980,7 +986,8 @@ class PatternGuardApp(tk.Tk):
         for index, item in enumerate(reference_items):
             col = index % 2
             row = index // 2
-            item_frame = tk.Frame(grid, bg="#F8F2EA", highlightbackground=self.colors["border"], highlightthickness=1, bd=0)
+            item_frame = tk.Frame(grid, bg="#F8F2EA", highlightbackground=self.colors["border"], highlightthickness=1,
+                                  bd=0)
             item_frame.grid(row=row, column=col, padx=6, pady=6, sticky="nsew")
             item_frame.grid_columnconfigure(0, weight=1)
             item_frame.grid_rowconfigure(1, weight=1)
@@ -990,10 +997,12 @@ class PatternGuardApp(tk.Tk):
             image_label.image = thumb
             image_label.pack(fill="x", padx=8, pady=(8, 4))
 
-            title = tk.Label(item_frame, text=item["title"], bg="#F8F2EA", fg=self.colors["text_primary"], font=("Segoe UI", 9, "bold"), anchor="w")
+            title = tk.Label(item_frame, text=item["title"], bg="#F8F2EA", fg=self.colors["text_primary"],
+                             font=("Segoe UI", 9, "bold"), anchor="w")
             title.pack(fill="x", padx=8)
 
-            subtitle = tk.Label(item_frame, text=item["subtitle"], bg="#F8F2EA", fg=self.colors["text_grey"], font=("Segoe UI", 8), anchor="w")
+            subtitle = tk.Label(item_frame, text=item["subtitle"], bg="#F8F2EA", fg=self.colors["text_grey"],
+                                font=("Segoe UI", 8), anchor="w")
             subtitle.pack(fill="x", padx=8, pady=(0, 4))
 
             btn = tk.Button(
@@ -1103,7 +1112,7 @@ class PatternGuardApp(tk.Tk):
             heading.pack(fill="x", padx=28, pady=(24, 18))
             tk.Label(
                 heading,
-                text="EDUCATIONAL ARCHIVE / TEXTILE FIELD GUIDE",
+                text="ACCEPTABLE TEXTILES FOR PROCESSING / TEXTILE REFERENCE GUIDE",
                 bg=self.colors["bg"],
                 fg=self.colors["maroon"],
                 font=("Segoe UI", 9, "bold"),
@@ -1133,28 +1142,70 @@ class PatternGuardApp(tk.Tk):
 
             items = [
                 {
-                    "title": "Pinilian Bayabas",
-                    "subtitle": "Dense botanical lattice",
-                    "description": "A traditionally woven geometric pattern recognized for its clustered diagonal rhythm and botanical-like spacing.",
-                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_bayabas", "sinan_bayabas_01.png"),
+                    "title": "Pinilian Sinan Agatul",
+                    "subtitle": "Itneg & Tinguian Heritage | River Crab & Tool Brocade",
+                    "description": "Elevated geometric forms resembling crabs, often interlaced with skeiner-like (sinan-sanga) weaving tool designs on a striped base.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_agatul", "sinan_agatul_02.png"),
                 },
                 {
-                    "title": "Pinilian Kabalyo",
-                    "subtitle": "Balanced repeating rhythm",
-                    "description": "Compact motifs with a consistent textile rhythm that highlight disciplined lattice spacing and woven repetition.",
-                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_kabalyo", "sinan_kabalyo_01.png"),
+                    "title": "Pinilian Sinan Bayabas",
+                    "subtitle": "Ilocano Heritage | Guava Fruit & Medicinal Leaf Brocade",
+                    "description": "Elevated brocade designs featuring guava leaves and fruit, occasionally merged with rice mortar (sinan-lasong) patterns.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_bayabas", "sinan_bayabas_02.png"),
+                },
+                {
+                    "title": "Pinilian Sinan Bituwon",
+                    "subtitle": "Ilocano & Itneg Heritage | Eight-Point Celestial Star Brocade",
+                    "description": "Symmetrical figures of four-point or eight-point stars in relief created with vibrant white or contrasting yarns on a striped backdrop.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_bituwon", "sinan_bituwon_03.png"),
+                },
+                {
+                    "title": "Pinilian Sinan Init",
+                    "subtitle": "Ilocano & Itneg Heritage | Solar Ray Starburst Brocade",
+                    "description": "Elevated radial geometric structures featuring diamond-shaped or starburst-like rays extending from a central point.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_init", "sinan_init_01.png"),
+                },
+                {
+                    "title": "Pinilian Sinan Kabalyo",
+                    "subtitle": "Itneg & Tinguian Heritage | Ancestral Sacred Horse Brocade",
+                    "description": "Distinct decorative brocade representations of horses, frequently arranged in alternating bands alongside diamond patterns over striped or checkered background sections.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_kabalyo", "sinan_kabalyo_08.png"),
+                },
+                {
+                    "title": "Pinilian Sinan Sabong",
+                    "subtitle": "Ilocano & Itneg Heritage | Blooming Floral Brocade",
+                    "description": "Elevated, textured brocade patterns illustrating floral designs, frequently bordered by diamond-shaped geometric elements.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "pinilian_sinan_sabong", "sinan_sabong_02.png"),
+                },
+                {
+                    "title": "Binakol Concha-concha",
+                    "subtitle": "Ilocano Heritage | Capiz Window Lattice Motif",
+                    "description": "Geometric patterns resembling grids of squares and translucent-look blocks embedded on a plaid background.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_concha_concha", "concha_concha_06.png"),
                 },
                 {
                     "title": "Binakol Kinkinelleng",
-                    "subtitle": "Strong diagonal symmetry",
-                    "description": "A bold binakol textile pattern with a pronounced directional flow and a visible repeating weave continuity.",
-                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_kinkinelleng", "kinkinelleng_01.png"),
+                    "subtitle": "Ilocano & Itneg Heritage | Terraced Rice Field Grid",
+                    "description": "Woven using double-toned basket weaves that combine positive and negative blocks of squares and rectangles of varying sizes.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_kinkinelleng", "kinkinelleng_05.png"),
                 },
                 {
                     "title": "Binakol Kulalabang",
-                    "subtitle": "High-contrast pattern field",
-                    "description": "A highly textured textile field with rhythmic alternation and strong lattice regularity used as a visual benchmark.",
-                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_kulalabang", "kulalabang_01.png"),
+                    "subtitle": "Itneg & Tinguian Heritage | Butterfly Wing Motif",
+                    "description": "A geometric plaid Binakol pattern with multiple panels, typically depicting strong contrasting colors such as red, white, and blue.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_kulalabang", "kulalabang_11.png"),
+                },
+                {
+                    "title": "Binakol Kusikus",
+                    "subtitle": "Ilocano & Itneg Heritage | Optical Whirlwind Grid",
+                    "description": "Concentric optical grids, repeating geometric spirals, or dizzying interlocking squares that expand outward from a central point.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_kusikus", "kusikus_01.png"),
+                },
+                {
+                    "title": "Binakol Paddak Ti Pusa",
+                    "subtitle": "Ilocano & Itneg Heritage | Cat's Paw Footprint Motif",
+                    "description": "Exhibits symmetrical, multi-block repeating geometric patterns designed to suggest the mark of a cat's paw. In mathematical symmetry analysis of Ilocano textiles, it falls under planar repeating groups (pmm) with axes of horizontal and vertical reflection.",
+                    "image_path": os.path.join(os.path.dirname(__file__), "dataset", "binakol_paddak_ti_pusa", "paddak_ti_pusa_12.png"),
                 },
             ]
 
@@ -1401,26 +1452,6 @@ class PatternGuardApp(tk.Tk):
         exp_inner = tk.Frame(self.card_explain, bg="#FFFFFF")
         exp_inner.pack(fill="x", padx=15, pady=(8, 12))
 
-        self.classification_lbl = tk.Label(
-            exp_inner,
-            text="Identified Textile: --",
-            bg="#FFFFFF",
-            fg=self.colors["text_primary"],
-            font=("Segoe UI", 10, "bold"),
-            anchor="w",
-        )
-        self.classification_lbl.pack(fill="x", pady=(0, 4))
-
-        self.confidence_lbl = tk.Label(
-            exp_inner,
-            text="Confidence: --",
-            bg="#FFFFFF",
-            fg=self.colors["text_grey"],
-            font=("Segoe UI", 10),
-            anchor="w",
-        )
-        self.confidence_lbl.pack(fill="x", pady=(0, 8))
-
         self.explain_text = tk.Text(
             exp_inner,
             bg="#FFFFFF",
@@ -1439,6 +1470,7 @@ class PatternGuardApp(tk.Tk):
         )
         self.explain_text.configure(state="disabled")
 
+# hanggang dito sa confidence result
         # PDF Export button placed just below the Output Details card
         export_pdf_container = tk.Frame(parent, bg="#FFFFFF")
         export_pdf_container.pack(fill="x", padx=15, pady=(8, 12))
@@ -1455,7 +1487,7 @@ class PatternGuardApp(tk.Tk):
         )
         self.export_pdf_btn.pack(anchor="center")
         self.export_pdf_btn.configure(state="disabled")
-        
+
         self.export_pdf_btn.configure(font=("Segoe UI", 10, "bold"), padx=12, pady=8)
 
     def create_card(self, parent, title_text, icon_prefix="", has_border=True):
@@ -1606,7 +1638,7 @@ class PatternGuardApp(tk.Tk):
         canvas.create_rectangle(x1 + r / 2, y1, x2 - r / 2, y2, fill=fill, outline="")
 
     def create_flat_button(
-        self, parent, text, bg, fg, hover_bg, command, font, height
+            self, parent, text, bg, fg, hover_bg, command, font, height
     ):
         btn = tk.Button(
             parent,
@@ -1626,7 +1658,7 @@ class PatternGuardApp(tk.Tk):
         return btn
 
     def create_flat_border_button(
-        self, parent, text, bg, fg, hover_bg, border_color, command
+            self, parent, text, bg, fg, hover_bg, border_color, command
     ):
         btn = tk.Button(
             parent,
@@ -1705,11 +1737,13 @@ class PatternGuardApp(tk.Tk):
             source = "N/A"
             classification_details = "Classification Result:\nClassification unavailable."
 
-        self.classification_lbl.configure(text=classification_text)
-        self.confidence_lbl.configure(text=confidence_text)
-        self.summary_classification_lbl.configure(text=classification_text)
-        self.summary_confidence_lbl.configure(text=confidence_text)
-        self._set_text_widget(self.description_text, description)
+            if hasattr(self, 'classification_lbl'):
+                self.classification_lbl.configure(text=classification_text)
+            if hasattr(self, 'confidence_lbl'):
+                self.confidence_lbl.configure(text=confidence_text)
+            self.summary_classification_lbl.configure(text=classification_text)
+            self.summary_confidence_lbl.configure(text=confidence_text)
+            self._set_text_widget(self.description_text, description)
         self._set_text_widget(self.cultural_text, cultural_background)
         self.source_lbl.configure(text=f"Source: {source}")
         self._set_text_widget(self.explain_text, classification_details)
@@ -1894,26 +1928,26 @@ class PatternGuardApp(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def update_pipeline_ui(
-        self,
-        orig_pil,
-        orig_hires,
-        track_pil,
-        recon_pil,
-        recon_hires,
-        heatmap_hires,
-        sfs_score,
-        ssim_val,
-        accuracy_val,
-        recall_val,
-        fpr_val,
-        iou_val,
-        a1,
-        a2,
-        theta_dom,
-        detected_group,
-        runtime_ms,
-        classification_result=None,
-        no_defect_detected=False,
+            self,
+            orig_pil,
+            orig_hires,
+            track_pil,
+            recon_pil,
+            recon_hires,
+            heatmap_hires,
+            sfs_score,
+            ssim_val,
+            accuracy_val,
+            recall_val,
+            fpr_val,
+            iou_val,
+            a1,
+            a2,
+            theta_dom,
+            detected_group,
+            runtime_ms,
+            classification_result=None,
+            no_defect_detected=False,
     ):
         self.upload_reconstruct_btn.configure(
             state="normal", text="Run audit pipeline"
@@ -2013,8 +2047,10 @@ class PatternGuardApp(tk.Tk):
                     f"Classification Result:\n{classification_text}\n"
                     f"{confidence_text}\n\n"
                 )
-            self.classification_lbl.configure(text=classification_text)
-            self.confidence_lbl.configure(text=confidence_text)
+            if hasattr(self, 'classification_lbl'):
+                self.classification_lbl.configure(text=classification_text)
+            if hasattr(self, 'confidence_lbl'):
+                self.confidence_lbl.configure(text=confidence_text)
         else:
             category = "Classification unavailable"
             subclass = ""
@@ -2022,8 +2058,10 @@ class PatternGuardApp(tk.Tk):
             classification_supported = False
             classification_text = f"Category: {category}"
             confidence_text = "Confidence: --"
-            self.classification_lbl.configure(text=classification_text)
-            self.confidence_lbl.configure(text=confidence_text)
+            if hasattr(self, 'classification_lbl'):
+                self.classification_lbl.configure(text=classification_text)
+            if hasattr(self, 'confidence_lbl'):
+                self.confidence_lbl.configure(text=confidence_text)
             classification_details = (
                 "Classification Result:\nClassification unavailable.\n\n"
             )
