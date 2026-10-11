@@ -27,12 +27,26 @@ expire after 30 minutes. It includes textile analysis, classification, metrics,
 PDF and PNG exports, the textile reference archive, capture tips, and wallpaper
 group guide.
 
-## Hosting it publicly
+## Deploying a free evaluation copy to Render
 
-The local server is intended for development and trusted local-network testing,
-not direct public deployment. Public hosting needs a production WSGI server,
-HTTPS, deployment-specific upload limits and temporary result storage, and
-protection against unauthorized or excessive use. The classifier runs on CPU,
-so hosting capacity and processing time should also be considered.
+The repository includes a Render Blueprint in `render.yaml`. To deploy:
+
+1. Push the project to GitHub, including the classifier model and reference
+   images used by the web app.
+2. In Render, create a **Blueprint** and connect the GitHub repository and the
+   branch you want to deploy.
+3. Review the Blueprint and create the service. Render will build the app and
+   provide a public `onrender.com` URL when deployment completes.
+
+The Blueprint uses Render's free web-service plan for evaluation. Free
+services can spin down after inactivity, so the first request may take about a
+minute to wake up. Their filesystem is ephemeral, and CPU and memory are
+limited; the app therefore uses one Gunicorn worker. Analysis can be slow or
+fail if the free instance runs out of resources. Result links are held in
+process memory and expire after 30 minutes, so they are not durable.
+
+Use a paid service for dependable availability or sustained use. Before
+sharing publicly, confirm you have permission to publish all included textile
+images and model files, and consider abuse/rate protections for public uploads.
 
 Run the original desktop application with `python main.py`.
