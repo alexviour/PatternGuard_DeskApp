@@ -163,65 +163,89 @@ def run_algorithm_ii_defect_isolation(I_bgr, a1, a2):
 
 
 def _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, local_comp_mask):
-   
    """Locates optimal non-defective lattice patch via border-ring NCC match."""
    h, w, _ = I_color.shape
-   patch_h = y2 - y1
-   patch_w = x2 - x1
+   patch_h, patch_w = y2 - y1, x2 - x1
+   if patch_h <= 0 or patch_w <= 0:
+       return None
 
-   I_gray = cv2.cvtColor(I_color, cv2.COLOR_BGR2GRAY)
+   I_gray = cv2.cvtColor(I_color, cv2.COLOR_BGR2GRAY).astype(np.float32)
    ref_patch = I_gray[y1:y2, x1:x2]
+   ring_mask = cv2.dilate(
+       local_comp_mask,
+       cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
+   ) > 0
+   ring_mask &= local_comp_mask == 0
+   if np.count_nonzero(ring_mask) <= 10:
+       ring_mask = np.ones((patch_h, patch_w), dtype=bool)
 
-   # Border ring mask
-   ring_mask = cv2.dilate(local_comp_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))) - local_comp_mask
-   valid_ring_pts = ring_mask > 0
+   template = np.zeros((patch_h, patch_w), dtype=np.float32)
+   ring_values = ref_patch[ring_mask]
+   template[ring_mask] = ring_values - ring_values.mean()
+   template_norm = float(np.linalg.norm(template))
+   if template_norm < 1e-6:
+       return None
 
-   best_donor = None
-   best_ncc = -1.0
+   search_y = max(1, int(step_y))
+   search_x = max(1, int(step_x))
+   roi_y1 = max(0, y1 - 3 * search_y)
+   roi_x1 = max(0, x1 - 3 * search_x)
+   roi_y2 = min(h, y2 + 3 * search_y)
+   roi_x2 = min(w, x2 + 3 * search_x)
+   source = I_gray[roi_y1:roi_y2, roi_x1:roi_x2]
+   if source.shape[0] < patch_h or source.shape[1] < patch_w:
+       return None
 
-   for mult_y in [-3, -2, -1, 0, 1, 2, 3]:
-       for mult_x in [-3, -2, -1, 0, 1, 2, 3]:
-           if mult_y == 0 and mult_x == 0:
-               continue
+   mask_u8 = ring_mask.astype(np.uint8)
+   ring_count = float(np.count_nonzero(ring_mask))
+   cross_correlation = cv2.matchTemplate(
+       source, template, cv2.TM_CCORR, mask=mask_u8
+   )
+   local_sum = cv2.matchTemplate(
+       source, mask_u8.astype(np.float32), cv2.TM_CCORR
+   )
+   local_square_sum = cv2.matchTemplate(
+       source * source, mask_u8.astype(np.float32), cv2.TM_CCORR
+   )
+   local_variance = np.maximum(
+       local_square_sum - (local_sum * local_sum / ring_count), 0.0
+   )
+   scores = cross_correlation / np.maximum(
+       template_norm * np.sqrt(local_variance), 1e-6
+   )
 
-           base_dy = int(mult_y * step_y)
-           base_dx = int(mult_x * step_x)
+   valid_mask = (M_mask > 0).astype(np.uint8)
+   integral_mask = cv2.integral(valid_mask)
+   score_y1 = max(0, y1 - 3 * search_y - roi_y1)
+   score_x1 = max(0, x1 - 3 * search_x - roi_x1)
+   score_y2 = min(scores.shape[0], y1 + 3 * search_y - roi_y1 + 1)
+   score_x2 = min(scores.shape[1], x1 + 3 * search_x - roi_x1 + 1)
+   search_scores = scores[score_y1:score_y2, score_x1:score_x2]
+   if search_scores.size == 0:
+       return None
 
-           for fine_dy in range(base_dy - 6, base_dy + 7, 2):
-               for fine_dx in range(base_dx - 6, base_dx + 7, 2):
-                   cy1, cy2 = y1 + fine_dy, y2 + fine_dy
-                   cx1, cx2 = x1 + fine_dx, x2 + fine_dx
+   candidate_indices = np.argsort(search_scores, axis=None)[::-1]
+   for candidate_index in candidate_indices:
+       local_y, local_x = np.unravel_index(candidate_index, search_scores.shape)
+       cy1 = roi_y1 + score_y1 + int(local_y)
+       cx1 = roi_x1 + score_x1 + int(local_x)
+       if cy1 == y1 and cx1 == x1:
+           continue
 
-                   if cy1 < 0 or cx1 < 0 or cy2 > h or cx2 > w:
-                       continue
+       cy2, cx2 = cy1 + patch_h, cx1 + patch_w
+       masked_pixels = (
+           integral_mask[cy2, cx2]
+           - integral_mask[cy1, cx2]
+           - integral_mask[cy2, cx1]
+           + integral_mask[cy1, cx1]
+       )
+       if masked_pixels == 0:
+           return I_color[cy1:cy2, cx1:cx2]
 
-                   # Ensure donor region is clean
-                   if np.count_nonzero(M_mask[cy1:cy2, cx1:cx2]) > 0:
-                       continue
-
-                   candidate_patch = I_color[cy1:cy2, cx1:cx2]
-
-                   # Avoid flat regions/ w/o patterns
-                   if np.std(candidate_patch) < 6:
-                       continue
-
-                   cand_gray = I_gray[cy1:cy2, cx1:cx2]
-
-        
-                   if np.count_nonzero(valid_ring_pts) > 10:
-                       score = _ncc(ref_patch[valid_ring_pts], cand_gray[valid_ring_pts])
-                   else:
-                       score = _ncc(ref_patch, cand_gray)
-
-                   if score > best_ncc:
-                       best_ncc = score
-                       best_donor = candidate_patch
-
-   return best_donor
+   return None
 
 """ Lattice-Guided Fabric Reconstruction Engine."""
 def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24, stride=1, symmetry_group="p1"):
- 
    h, w, _ = I_color.shape
    I_out = I_color.copy()
 
@@ -258,18 +282,41 @@ def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24,
 
        if donor_patch is not None and donor_patch.shape[:2] == (y2 - y1, x2 - x1):
            local_mask = comp_mask[y1:y2, x1:x2]
+           repair_mask = cv2.dilate(
+               local_mask,
+               cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
+               iterations=1,
+           ) > 0
+           target_patch = I_color[y1:y2, x1:x2].astype(np.float32)
+           calibrated_donor = donor_patch.astype(np.float32)
+           ring_mask = cv2.dilate(
+               local_mask,
+               cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
+           ) > 0
+           ring_mask &= local_mask == 0
+           if np.count_nonzero(ring_mask) > 10:
+               for channel in range(I_color.shape[2]):
+                   source_values = calibrated_donor[:, :, channel][ring_mask]
+                   target_values = target_patch[:, :, channel][ring_mask]
+                   source_std = float(np.std(source_values))
+                   target_std = float(np.std(target_values))
+                   gain = (
+                       np.clip(target_std / source_std, 0.85, 1.15)
+                       if source_std > 1.0
+                       else 1.0
+                   )
+                   offset = np.clip(
+                       float(np.mean(target_values))
+                       - gain * float(np.mean(source_values)),
+                       -24.0,
+                       24.0,
+                   )
+                   calibrated_donor[:, :, channel] = (
+                       calibrated_donor[:, :, channel] * gain + offset
+                   )
 
-           kernel_feather = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-           dilated_mask = cv2.dilate(local_mask, kernel_feather, iterations=1)
-
-           alpha = cv2.GaussianBlur(dilated_mask.astype(np.float32), (3, 3), 0) / 255.0
-           alpha = np.clip(alpha, 0.0, 1.0)[:, :, np.newaxis]
-
-           bg = I_out[y1:y2, x1:x2].astype(np.float32)
-           fg = donor_patch.astype(np.float32)
-           blended = fg * alpha + bg * (1.0 - alpha)
-
-           I_out[y1:y2, x1:x2] = np.clip(blended, 0, 255).astype(np.uint8)
+           repaired_patch = np.clip(calibrated_donor, 0, 255).astype(np.uint8)
+           I_out[y1:y2, x1:x2][repair_mask] = repaired_patch[repair_mask]
 
        else:
            # Boundary fallback
@@ -277,4 +324,3 @@ def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24,
            I_out = cv2.inpaint(I_out, dilated_mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
 
    return I_out
-
