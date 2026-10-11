@@ -45,7 +45,7 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         for expected in (
             b"Ma. Lourdes Alexandra F. Reyes",
-            b"Close Anne B. Sario",
+            b"Cloe Anne B. Sario",
             b"Dr. Francis F. Balahadia, DIT",
             b"Laguna State Polytechnic University",
             b"developed as a project at LSPU",

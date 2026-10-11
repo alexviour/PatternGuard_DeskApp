@@ -156,11 +156,11 @@
         <div class="guide-heading">
           <p class="eyebrow">EDUCATIONAL ARCHIVE / TEXTILE FIELD GUIDE</p>
           <h2 id="reference-title">Educational Textile Reference Guide</h2>
-          <p>Select a textile card to view a larger sample and browse its dataset images.</p>
+          <p>Select a textile card to view a larger sample and browse its images.</p>
         </div>
         <div class="reference-grid">
           {% for item in reference_items %}
-            <a class="reference-card" href="{{ url_for('reference_detail', slug=item.slug) }}" aria-label="View {{ item.title }} reference and dataset samples">
+            <a class="reference-card" href="{{ url_for('reference_detail', slug=item.slug) }}" aria-label="View {{ item.title }} reference samples">
               <img src="{{ url_for('reference_image', slug=item.slug) }}" alt="Reference sample: {{ item.title }}" loading="lazy">
               <div class="reference-copy">
                 <h3>{{ item.title }}</h3>
@@ -169,7 +169,7 @@
                 {% if item.commonly_used_by is defined %}
                   <p class="reference-sample-count">Commonly used by/in: {{ item.commonly_used_by }}</p>
                 {% endif %}
-                <p class="reference-sample-count">{{ item.sample_paths|length }} dataset samples · View larger →</p>
+                <p class="reference-sample-count">View larger →</p>
               </div>
             </a>
           {% endfor %}

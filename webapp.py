@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import uuid
+import webbrowser
 from collections import OrderedDict
 from pathlib import Path
 
@@ -81,7 +82,7 @@ def create_app():
                 "image": "5.png",
             },
             {
-                "name": "Close Anne B. Sario",
+                "name": "Cloe Anne B. Sario",
                 "role": "Developer",
                 "image": "4.png",
             },
@@ -576,8 +577,12 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "5000"))
+    threading.Timer(
+        1.0, webbrowser.open, args=(f"http://127.0.0.1:{port}/",)
+    ).start()
     app.run(
         host=os.environ.get("PATTERNGUARD_HOST", "0.0.0.0"),
-        port=int(os.environ.get("PORT", "5000")),
+        port=port,
         debug=False,
     )

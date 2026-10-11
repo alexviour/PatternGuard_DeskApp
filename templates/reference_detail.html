@@ -39,7 +39,7 @@
           class="sample-carousel"
           id="sample-carousel"
           data-sample-index="{{ sample_index }}"
-          aria-label="{{ item.title }} dataset image viewer"
+          aria-label="{{ item.title }} image viewer"
         >
           <div class="sample-carousel-stage">
             {% if item.sample_paths|length > 1 %}
@@ -59,7 +59,7 @@
             <span class="carousel-filename">{{ sample.name }}</span>
             <span class="carousel-count">{{ sample_index + 1 }} / {{ item.sample_paths|length }}</span>
           </div>
-          <p class="swipe-hint">Use the arrows or swipe to browse all {{ item.sample_paths|length }} dataset images.</p>
+          <p class="swipe-hint">Use the arrows or swipe to browse all of the images.</p>
         </div>
       </section>
     </main>
