@@ -7,6 +7,24 @@
     <title>PatternGuard | Textile Audit</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
+  {% macro audit_guides() %}
+    <section class="guide-tools" aria-label="Audit guides">
+      <details class="guide-card" id="capture-guide">
+        <summary>Capture guide <span>Tips for the best audit results</span></summary>
+        <ul class="capture-tips">
+          <li><strong>Capture overhead</strong><span>Take photos directly from above to prevent perspective skew.</span></li>
+          <li><strong>Ensure even lighting</strong><span>Use balanced light to eliminate unnecessary shadows.</span></li>
+          <li><strong>Keep fabric flat</strong><span>Smooth out wrinkles so the geometric grid stays aligned.</span></li>
+          <li><strong>Frame full context</strong><span>Ensure intact pattern motifs surround the damaged area.</span></li>
+          <li><strong>Use high-resolution images</strong><span>Clear focus allows a more precise restoration.</span></li>
+        </ul>
+      </details>
+      <details class="guide-card" id="wallpaper-guide">
+        <summary>Wallpaper group guide <span>Understand the detected symmetry group</span></summary>
+        <img class="wallpaper-guide-image" src="{{ url_for('wallpaper_group_guide') }}" alt="Wallpaper group classification reference chart" loading="lazy">
+      </details>
+    </section>
+  {% endmacro %}
   <body>
     <header class="site-header">
       <a class="brand" href="{{ url_for('index') }}">
@@ -35,122 +53,234 @@
         <div class="notice notice-error" role="alert">{{ error }}</div>
       {% endif %}
 
-      {% if not result %}
-        <section class="upload-card" id="upload" aria-labelledby="upload-title">
-          <div class="section-heading">
-            <span class="step-number">01</span>
-            <div>
-              <h2 id="upload-title">Start an audit</h2>
-              <p>Choose a clear photo of the textile pattern.</p>
-            </div>
-          </div>
-          <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data">
-            <label class="upload-drop" for="image">
-              <span class="upload-icon" aria-hidden="true">↑</span>
-              <span class="upload-label">Choose an image from your device</span>
-              <span class="upload-help">PNG or JPEG · maximum 10 MB</span>
-              <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required>
-            </label>
-            <p class="file-name" id="file-name" aria-live="polite">No image selected</p>
-            <button class="button button-primary" type="submit">Analyze textile</button>
-          </form>
-        </section>
-      {% else %}
-        <section class="results-section" aria-labelledby="results-title">
-          <div class="results-heading">
-            <div>
-              <p class="eyebrow">AUDIT COMPLETE</p>
-              <h2 id="results-title">Textile analysis</h2>
-            </div>
-            <a class="button button-secondary" href="{{ url_for('index') }}">Analyze another image</a>
-          </div>
-
-          {% if result.warning %}
-            <div class="notice notice-warning" role="status">{{ result.warning }}</div>
-          {% endif %}
-          {% if result.no_defect_message %}
-            <div class="notice notice-success" role="status">{{ result.no_defect_message }}</div>
-          {% endif %}
-
-          <section class="interpretation-card" aria-labelledby="interpretation-title">
-            <p class="eyebrow">INTERPRETABLE AUDIT RESULT</p>
-            <h3 id="interpretation-title">{{ result.interpretation.title }}</h3>
-            <p>{{ result.interpretation.summary }}</p>
-            <p>{{ result.interpretation.sfs }}</p>
-          </section>
-
-          <section class="symmetry-card" aria-labelledby="symmetry-title">
-            <div>
-              <p class="eyebrow">REPEATING-PATTERN SYMMETRY</p>
-              <h3 id="symmetry-title">Wallpaper group: {{ result.metrics.wallpaper_group }}</h3>
-              <p>{{ result.interpretation.wallpaper_group }}</p>
-              <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
-            </div>
-            <dl class="lattice-values">
-              <div><dt>A1 repeat spacing</dt><dd>{{ result.metrics.a1 }} px</dd></div>
-              <div><dt>A2 repeat spacing</dt><dd>{{ result.metrics.a2 }} px</dd></div>
-            </dl>
-          </section>
-
-          <div class="image-grid">
-            {% for name, title in [('original', 'Original'), ('heatmap', 'Detected areas'), ('restored', 'Reconstruction')] %}
-              <article class="image-card">
-                <h3>{{ title }}</h3>
-                <div class="image-content">
-                  <img src="{{ url_for('result_image', result_id=result_id, name=name) }}" alt="{{ title }} textile analysis result">
-                  <a class="image-download" href="{{ url_for('result_image', result_id=result_id, name=name, download=1) }}">Download PNG</a>
-                </div>
-              </article>
-            {% endfor %}
-          </div>
-
-          <section class="metrics-card" aria-labelledby="metrics-title">
-            <div class="card-heading">
+      <section class="wizard" id="audit-wizard" data-current-step="1" aria-label="Textile audit">
+        {% if not result %}
+          <section class="wizard-step upload-card" id="upload" data-step-panel="1" aria-labelledby="upload-title">
+            <div class="section-heading">
+              <span class="step-number">01</span>
               <div>
-                <p class="eyebrow">PATTERN &amp; RESTORATION</p>
-                <h3 id="metrics-title">Audit metrics</h3>
+                <p class="eyebrow">AUDIT &amp; INPUT</p>
+                <h2 id="upload-title" tabindex="-1">Start an audit</h2>
+                <p>Choose a clear photo of the textile pattern.</p>
               </div>
-              <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download PDF report</a>
             </div>
-            <dl class="metric-grid">
-              <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
-              <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
-              <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd></div>
-              <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd></div>
-              <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd></div>
-              <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd></div>
-              <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
-            </dl>
-            <details class="metric-help">
-              <summary>What do these metrics mean?</summary>
-              <dl class="metric-definitions">
-                <div><dt>Symmetry Fidelity Score (SFS)</dt><dd>A composite score using accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive rate (15%), and IoU (10%), with a penalty for background changes. The desktop app uses 95% as a display threshold; it is not a validated guarantee.</dd></div>
-                <div><dt>Accuracy</dt><dd>A weighted score: 60% of masked pixels changed during reconstruction plus 40% of unmasked pixels preserved.</dd></div>
-                <div><dt>Recall</dt><dd>Of all pixels in the detected mask, the percentage also changed by reconstruction.</dd></div>
-                <div><dt>False positive rate</dt><dd>Of pixels outside the detected mask, the percentage changed by reconstruction.</dd></div>
-                <div><dt>Intersection over Union (IoU)</dt><dd>Overlap between the detected mask and changed pixels, divided by their combined area.</dd></div>
-                <div><dt>Structural Similarity (SSIM)</dt><dd>Structural similarity between the input and reconstruction in regions outside the detected mask.</dd></div>
-              </dl>
-              <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the detected mask with pixels changed by reconstruction. If no defects are detected, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
-            </details>
+            <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data">
+              <label class="upload-drop" for="image">
+                <span class="upload-icon" aria-hidden="true">↑</span>
+                <span class="upload-label">Choose an image from your device</span>
+                <span class="upload-help">PNG or JPEG · maximum 10 MB</span>
+                <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required>
+              </label>
+              <p class="file-name" id="file-name" aria-live="polite">No image selected</p>
+              <button class="button button-primary" type="submit">Analyze textile</button>
+            </form>
+            {{ audit_guides() }}
           </section>
+        {% else %}
+          <section class="results-section" aria-labelledby="results-title">
+            <div class="results-heading">
+              <div>
+                <p class="eyebrow">AUDIT COMPLETE</p>
+                <h2 id="results-title">Textile analysis</h2>
+              </div>
+              <a class="button button-secondary" href="{{ url_for('index') }}">Analyze another image</a>
+            </div>
 
-          <section class="culture-card" aria-labelledby="culture-title">
-            <p class="eyebrow">CULTURAL CONTEXT</p>
-            <h3 id="culture-title">{{ result.classification.text }}</h3>
-            <p class="confidence">{{ result.classification.confidence }}</p>
-            {% if result.classification.english_name %}
-              <p class="reference-english-name">{{ result.classification.english_name }}</p>
+            {% if result.warning %}
+              <div class="notice notice-warning" role="status">{{ result.warning }}</div>
             {% endif %}
-            {% if result.classification.commonly_used_by %}
-              <p class="reference-common-use"><strong>Commonly used by/in:</strong> {{ result.classification.commonly_used_by }}</p>
+            {% if result.no_defect_message %}
+              <div class="notice notice-success" role="status">{{ result.no_defect_message }}</div>
             {% endif %}
-            <p>{{ result.classification.description }}</p>
-            <p>{{ result.classification.background }}</p>
-            <p class="source">Source: {{ result.classification.source }}</p>
+
+            <ol class="wizard-progress" aria-label="Audit progress">
+              <li data-progress-step="1" aria-current="step"><button type="button" data-go-step="1"><span>1</span><span>Audit &amp; Input</span></button></li>
+              <li data-progress-step="2"><button type="button" data-go-step="2"><span>2</span><span>Interpretable Results</span></button></li>
+              <li data-progress-step="3"><button type="button" data-go-step="3"><span>3</span><span>Restored Image</span></button></li>
+              <li data-progress-step="4"><button type="button" data-go-step="4"><span>4</span><span>Classification &amp; Context</span></button></li>
+              <li data-progress-step="5"><button type="button" data-go-step="5"><span>5</span><span>Final Audit Metrics</span></button></li>
+            </ol>
+
+            <section class="wizard-step" id="upload" data-step-panel="1" aria-labelledby="step-1-title">
+              <div class="interpretation-card">
+                <p class="eyebrow">AUDIT &amp; INPUT</p>
+                <h3 id="step-1-title" tabindex="-1">Your image has been processed</h3>
+                <p>{{ result.interpretation.title }}. Continue to review the detected regions and restoration.</p>
+                <img class="audit-preview" src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Submitted textile image">
+              </div>
+              {{ audit_guides() }}
+              <div class="wizard-actions wizard-actions-end">
+                <button class="button button-primary" type="button" data-next>Next</button>
+              </div>
+            </section>
+
+            <section class="wizard-step" data-step-panel="2" aria-labelledby="step-2-title" hidden>
+              <div class="wizard-title">
+                <p class="eyebrow">INTERPRETABLE RESULTS</p>
+                <h3 id="step-2-title" tabindex="-1">Original and detected regions</h3>
+              </div>
+              <div class="comparison-grid">
+                <article class="image-card">
+                  <h3>Original Image</h3>
+                  <img src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Original textile image">
+                </article>
+                <article class="image-card">
+                  <h3>Detected Error Image</h3>
+                  <img src="{{ url_for('result_image', result_id=result_id, name='heatmap') }}" alt="Heatmap showing detected textile regions">
+                  <p class="heatmap-legend">
+                    <span><i class="heatmap-swatch heatmap-swatch-detected" aria-hidden="true"></i>Possible defects: red tint, yellow outline</span>
+                    <span><i class="heatmap-swatch heatmap-swatch-texture" aria-hidden="true"></i>Background: relative texture difference</span>
+                  </p>
+                </article>
+              </div>
+              <section class="interpretation-card" aria-labelledby="interpretation-title">
+                <p class="eyebrow">INTERPRETABLE AUDIT RESULT · WHY THESE REGIONS WERE FLAGGED</p>
+                <h3 id="interpretation-title">{{ result.interpretation.title }}</h3>
+                <p>{{ result.interpretation.summary }}</p>
+                <p>{{ result.interpretation.detection_explanation }}</p>
+                <p>{{ result.interpretation.sfs }}</p>
+              </section>
+              <div class="wizard-actions">
+                <button class="button button-secondary" type="button" data-previous>Previous</button>
+                <button class="button button-primary" type="button" data-next>Next</button>
+              </div>
+            </section>
+
+            <section class="wizard-step" data-step-panel="3" aria-labelledby="step-3-title" hidden>
+              <div class="wizard-title">
+                <p class="eyebrow">RESTORED IMAGE</p>
+                <h3 id="step-3-title" tabindex="-1">Geometric reconstruction</h3>
+              </div>
+              <section class="before-after" data-before-after aria-label="Before and after image comparison">
+                <div class="before-after-image">
+                  <img class="before-image" src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Original textile before reconstruction">
+                  <div class="after-image" data-after-image>
+                    <img src="{{ url_for('result_image', result_id=result_id, name='restored') }}" alt="Reconstructed textile after restoration">
+                  </div>
+                  <span class="comparison-label comparison-label-before">Original</span>
+                  <span class="comparison-label comparison-label-after">Reconstructed</span>
+                  <div class="comparison-divider" data-comparison-divider aria-hidden="true">
+                    <span class="comparison-handle">↔</span>
+                  </div>
+                  <input
+                    class="comparison-range"
+                    data-comparison-range
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="50"
+                    aria-label="Compare original and reconstructed textile"
+                    aria-valuetext="50% original, 50% reconstructed"
+                  >
+                </div>
+                <p class="comparison-help">Drag the circular ↔ handle on the vertical divider, or focus the comparison and use the arrow keys.</p>
+              </section>
+              <section class="interpretation-card">
+                <p class="eyebrow">HOW RESTORATION WORKS</p>
+                <h3>{{ result.interpretation.title }}</h3>
+                <p>The detected error heatmap from the previous step highlights regions that differ from their local texture. Its detected mask guides repair: the system estimates the textile's repeating lattice, searches for matching clean pattern patches aligned to that geometry, and uses inpainting as a fallback when no suitable patch is available.</p>
+                <p>{{ result.interpretation.summary }}</p>
+              </section>
+              <div class="wizard-actions">
+                <button class="button button-secondary" type="button" data-previous>Previous</button>
+                <button class="button button-primary" type="button" data-next>Next</button>
+              </div>
+            </section>
+
+            <section class="wizard-step" data-step-panel="4" aria-labelledby="step-4-title" hidden>
+              <div class="wizard-title">
+                <p class="eyebrow">CLASSIFICATION &amp; CONTEXT</p>
+                <h3 id="step-4-title" tabindex="-1">Textile classification and cultural context</h3>
+              </div>
+              <div class="wizard-thumbnails">
+                {% for name, title in [('original', 'Original Image'), ('heatmap', 'Detected Error Heatmap'), ('restored', 'Reconstructed Image')] %}
+                  <figure class="wizard-thumbnail">
+                    <img src="{{ url_for('result_image', result_id=result_id, name=name) }}" alt="{{ title }}">
+                    <figcaption>{{ title }}</figcaption>
+                  </figure>
+                {% endfor %}
+              </div>
+              <div class="download-actions" aria-label="Download audit images and preliminary report">
+                {% for name, title in [('original', 'Original'), ('heatmap', 'Heatmap'), ('restored', 'Reconstruction')] %}
+                  <a class="button button-secondary" href="{{ url_for('result_image', result_id=result_id, name=name, download=1) }}">Download {{ title }} PNG</a>
+                {% endfor %}
+                <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download preliminary PDF report</a>
+              </div>
+              <section class="symmetry-card" aria-labelledby="symmetry-title">
+                <div>
+                  <p class="eyebrow">REPEATING-PATTERN SYMMETRY · WALLPAPER GROUP CLASSIFICATION</p>
+                  <h3 id="symmetry-title">{{ result.metrics.wallpaper_group }}</h3>
+                  <p>{{ result.interpretation.wallpaper_group }}</p>
+                  <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
+                </div>
+                <dl class="lattice-values">
+                  <div><dt>A1 repeat spacing</dt><dd>{{ result.metrics.a1 }} px</dd></div>
+                  <div><dt>A2 repeat spacing</dt><dd>{{ result.metrics.a2 }} px</dd></div>
+                </dl>
+              </section>
+              <section class="culture-card" aria-labelledby="culture-title">
+                <p class="eyebrow">TEXTILE CLASSIFICATION &amp; CULTURAL CONTEXT</p>
+                <h3 id="culture-title">{{ result.classification.text }}</h3>
+                <p class="confidence">{{ result.classification.confidence }}</p>
+                {% if result.classification.english_name %}
+                  <p class="reference-english-name">{{ result.classification.english_name }}</p>
+                {% endif %}
+                {% if result.classification.commonly_used_by %}
+                  <p class="reference-common-use"><strong>Commonly used by/in:</strong> {{ result.classification.commonly_used_by }}</p>
+                {% endif %}
+                <p>{{ result.classification.description }}</p>
+                <p>{{ result.classification.background }}</p>
+                <p class="source">Source: {{ result.classification.source }}</p>
+              </section>
+              <div class="wizard-actions">
+                <button class="button button-secondary" type="button" data-previous>Previous</button>
+                <button class="button button-primary" type="button" data-next>Next</button>
+              </div>
+            </section>
+
+            <section class="wizard-step" data-step-panel="5" aria-labelledby="step-5-title" hidden>
+              <div class="wizard-title">
+                <p class="eyebrow">FINAL AUDIT METRICS</p>
+                <h3 id="step-5-title" tabindex="-1">Final audit metrics</h3>
+              </div>
+              <section class="metrics-card" aria-labelledby="metrics-title">
+                <div class="card-heading">
+                  <div>
+                    <p class="eyebrow">PATTERN &amp; RESTORATION</p>
+                    <h3 id="metrics-title">Audit metrics</h3>
+                  </div>
+                  <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download Full PDF File</a>
+                </div>
+                <dl class="metric-grid">
+                  <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
+                  <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
+                  <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd></div>
+                  <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd></div>
+                  <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd></div>
+                  <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd></div>
+                  <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
+                </dl>
+                <details class="metric-help">
+                  <summary>What do these metrics mean?</summary>
+                  <dl class="metric-definitions">
+                    <div><dt>Symmetry Fidelity Score (SFS)</dt><dd>A composite score using accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive rate (15%), and IoU (10%), with a penalty for background changes. The desktop app uses 95% as a display threshold; it is not a validated guarantee.</dd></div>
+                    <div><dt>Accuracy</dt><dd>A weighted score: 60% of masked pixels changed during reconstruction plus 40% of unmasked pixels preserved.</dd></div>
+                    <div><dt>Recall</dt><dd>Of all pixels in the detected mask, the percentage also changed by reconstruction.</dd></div>
+                    <div><dt>False positive rate</dt><dd>Of pixels outside the detected mask, the percentage changed by reconstruction.</dd></div>
+                    <div><dt>Intersection over Union (IoU)</dt><dd>Overlap between the detected mask and changed pixels, divided by their combined area.</dd></div>
+                    <div><dt>Structural Similarity (SSIM)</dt><dd>Structural similarity between the input and reconstruction in regions outside the detected mask.</dd></div>
+                  </dl>
+                  <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the detected mask with pixels changed by reconstruction. If no defects are detected, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
+                </details>
+              </section>
+              <div class="wizard-actions">
+                <button class="button button-secondary" type="button" data-previous>Previous</button>
+                <a class="button button-secondary" href="{{ url_for('index') }}">Audit another textile</a>
+              </div>
+            </section>
           </section>
-        </section>
-      {% endif %}
+        {% endif %}
+      </section>
 
       <section class="reference-section" id="reference-guide" aria-labelledby="reference-title">
         <div class="guide-heading">
@@ -176,22 +306,6 @@
         </div>
       </section>
 
-      <section class="guide-tools" aria-label="Audit guides">
-        <details class="guide-card">
-          <summary>Capture guide <span>Tips for the best audit results</span></summary>
-          <ul class="capture-tips">
-            <li><strong>Capture overhead</strong><span>Take photos directly from above to prevent perspective skew.</span></li>
-            <li><strong>Ensure even lighting</strong><span>Use balanced light to eliminate unnecessary shadows.</span></li>
-            <li><strong>Keep fabric flat</strong><span>Smooth out wrinkles so the geometric grid stays aligned.</span></li>
-            <li><strong>Frame full context</strong><span>Ensure intact pattern motifs surround the damaged area.</span></li>
-            <li><strong>Use high-resolution images</strong><span>Clear focus allows a more precise restoration.</span></li>
-          </ul>
-        </details>
-        <details class="guide-card" id="wallpaper-guide" {% if result %}open{% endif %}>
-          <summary>Wallpaper group guide <span>Understand the detected symmetry group</span></summary>
-          <img class="wallpaper-guide-image" src="{{ url_for('wallpaper_group_guide') }}" alt="Wallpaper group classification reference chart" loading="lazy">
-        </details>
-      </section>
     </main>
 
     <footer class="site-footer">
@@ -206,6 +320,101 @@
             imageInput.files.length ? imageInput.files[0].name : "No image selected";
         });
       }
+
+      const wizard = document.getElementById("audit-wizard");
+      if (wizard) {
+        const panels = Array.from(wizard.querySelectorAll("[data-step-panel]"));
+        const progressSteps = Array.from(wizard.querySelectorAll("[data-progress-step]"));
+        let currentStep = Number(wizard.dataset.currentStep) || 1;
+
+        const showStep = (step) => {
+          currentStep = Math.max(1, Math.min(step, panels.length));
+          panels.forEach((panel) => {
+            const isCurrent = Number(panel.dataset.stepPanel) === currentStep;
+            panel.hidden = !isCurrent;
+            panel.setAttribute("aria-hidden", String(!isCurrent));
+          });
+          progressSteps.forEach((item) => {
+            const stepNumber = Number(item.dataset.progressStep);
+            if (stepNumber === currentStep) {
+              item.setAttribute("aria-current", "step");
+            } else {
+              item.removeAttribute("aria-current");
+            }
+            item.classList.toggle("is-complete", stepNumber < currentStep);
+          });
+        };
+
+        wizard.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-next], [data-previous], [data-go-step]");
+          if (!button) return;
+          if (button.hasAttribute("data-go-step")) {
+            showStep(Number(button.dataset.goStep));
+          } else {
+            showStep(currentStep + (button.hasAttribute("data-next") ? 1 : -1));
+          }
+          const activePanel = panels[currentStep - 1];
+          activePanel.querySelector("h2, h3")?.focus({ preventScroll: true });
+          activePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        wizard.querySelectorAll("[data-comparison-range]").forEach((range) => {
+          const comparison = range.closest("[data-before-after]");
+          const imageStage = comparison.querySelector(".before-after-image");
+          const afterImage = comparison.querySelector("[data-after-image]");
+          const divider = comparison.querySelector("[data-comparison-divider]");
+          const updateComparison = () => {
+            const originalPercent = Number(range.value);
+            afterImage.style.clipPath = `inset(0 0 0 ${originalPercent}%)`;
+            divider.style.left = `${originalPercent}%`;
+            range.setAttribute(
+              "aria-valuetext",
+              `${originalPercent}% original, ${100 - originalPercent}% reconstructed`
+            );
+          };
+          let isDragging = false;
+          const setPositionFromPointer = (event) => {
+            const bounds = imageStage.getBoundingClientRect();
+            const percent = ((event.clientX - bounds.left) / bounds.width) * 100;
+            range.value = String(Math.max(0, Math.min(100, percent)));
+            updateComparison();
+          };
+
+          range.addEventListener("input", updateComparison);
+          imageStage.addEventListener("pointerdown", (event) => {
+            const bounds = imageStage.getBoundingClientRect();
+            const dividerX = bounds.left + (Number(range.value) / 100) * bounds.width;
+            if (Math.abs(event.clientX - dividerX) > 36) return;
+            isDragging = true;
+            imageStage.setPointerCapture(event.pointerId);
+            setPositionFromPointer(event);
+            event.preventDefault();
+          });
+          imageStage.addEventListener("pointermove", (event) => {
+            if (isDragging) setPositionFromPointer(event);
+          });
+          const stopDragging = () => {
+            isDragging = false;
+          };
+          imageStage.addEventListener("pointerup", stopDragging);
+          imageStage.addEventListener("pointercancel", stopDragging);
+          updateComparison();
+        });
+
+        showStep(currentStep);
+      }
+
+      document.querySelectorAll('a[href="#capture-guide"], a[href="#wallpaper-guide"]').forEach((link) => {
+        link.addEventListener("click", () => {
+          const guide = document.querySelector(link.getAttribute("href"));
+          const panel = guide?.closest("[data-step-panel]");
+          if (panel?.hidden) {
+            const stepButton = document.querySelector(`[data-go-step="${panel.dataset.stepPanel}"]`);
+            stepButton?.click();
+          }
+          if (guide) guide.open = true;
+        });
+      });
 
     </script>
   </body>

@@ -24,11 +24,17 @@ class WebAppTests(unittest.TestCase):
         self.assertIn(
             b"Understand and restore Filipino woven patterns.", response.data
         )
+        self.assertIn(b"AUDIT &amp; INPUT", response.data)
+        self.assertNotIn(b"STEP 1 OF 5", response.data)
         self.assertNotIn(b"temporary result files expire after 30 minutes", response.data)
         self.assertIn(b"Analyze textile", response.data)
         self.assertIn(b"Educational Textile Reference Guide", response.data)
         self.assertIn(b"Wallpaper group guide", response.data)
         self.assertIn(b"Capture guide", response.data)
+        self.assertLess(
+            response.data.index(b'class="guide-tools"'),
+            response.data.index(b'id="reference-guide"'),
+        )
         for item in webapp.REFERENCE_ITEMS:
             self.assertNotIn("subtitle", item)
             escaped_title = html.escape(item["title"]).replace(
@@ -180,6 +186,18 @@ class WebAppTests(unittest.TestCase):
         self.assertTrue(response.data.startswith(b"\xff\xd8\xff"))
         response.close()
 
+    def test_detection_heatmap_highlights_mask_without_changing_mask(self):
+        diff_map = np.zeros((20, 20), dtype=np.float32)
+        defect_mask = np.zeros((20, 20), dtype=np.uint8)
+        defect_mask[5:15, 5:15] = 255
+        original_mask = defect_mask.copy()
+
+        rendered = webapp._render_detection_heatmap(diff_map, defect_mask)
+
+        self.assertGreater(rendered[10, 10, 2], rendered[10, 10, 0])
+        np.testing.assert_array_equal(rendered[5, 10], [0, 255, 255])
+        np.testing.assert_array_equal(defect_mask, original_mask)
+
     def test_unknown_reference_image_is_not_found(self):
         response = self.client.get("/references/unknown/image")
 
@@ -244,6 +262,39 @@ class WebAppTests(unittest.TestCase):
         self.assertIn(b"Commonly used by/in:</strong> Abra, Tinguian, Ineg", response.data)
         self.assertIn(b"INTERPRETABLE AUDIT RESULT", response.data)
         self.assertIn(b"REPEATING-PATTERN SYMMETRY", response.data)
+        self.assertIn(b'data-step-panel="1"', response.data)
+        self.assertLess(
+            response.data.index(b'id="capture-guide"'),
+            response.data.index(b'data-step-panel="2"'),
+        )
+        for step in range(1, 6):
+            self.assertIn(f'data-step-panel="{step}"'.encode(), response.data)
+            self.assertIn(f'data-go-step="{step}"'.encode(), response.data)
+        for step_title in (
+            b"INTERPRETABLE RESULTS",
+            b"RESTORED IMAGE",
+            b"CLASSIFICATION &amp; CONTEXT",
+            b"FINAL AUDIT METRICS",
+            b'data-before-after',
+            b'data-comparison-range',
+            b'aria-label="Compare original and reconstructed textile"',
+            b"Drag the circular",
+            b"detected error heatmap from the previous step",
+            b"Download preliminary PDF report",
+            b"Download Full PDF File",
+            b"Audit another textile",
+            b"dark-pixel and local texture-deviation thresholds",
+        ):
+            self.assertIn(step_title, response.data)
+        for removed_step_label in (
+            b"STEP 1 OF 5",
+            b"STEP 2 OF 5",
+            b"STEP 3 OF 5",
+            b"STEP 4 OF 5",
+            b"STEP 5 OF 5",
+        ):
+            self.assertNotIn(removed_step_label, response.data)
+        self.assertNotIn(b"Start Over", response.data)
         self.assertIn(b"What do these metrics mean?", response.data)
         self.assertIn(b"ground-truth damage", response.data)
         self.assertIn(b"Open wallpaper-group chart", response.data)

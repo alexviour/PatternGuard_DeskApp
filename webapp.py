@@ -311,6 +311,25 @@ def _encode_png(image):
     return output.getvalue()
 
 
+def _render_detection_heatmap(diff_map, defect_mask):
+    heatmap = cv2.applyColorMap(
+        cv2.normalize(diff_map, None, 0, 255, cv2.NORM_MINMAX).astype(
+            np.uint8
+        ),
+        cv2.COLORMAP_JET,
+    )
+    mask = np.where(defect_mask == 255, 255, 0).astype(np.uint8)
+    overlay = heatmap.copy()
+    overlay[mask == 255] = (0, 0, 255)
+    heatmap = cv2.addWeighted(heatmap, 0.45, overlay, 0.55, 0)
+
+    contours, _ = cv2.findContours(
+        mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    cv2.drawContours(heatmap, contours, -1, (0, 255, 255), 2)
+    return heatmap
+
+
 def _analyze_image(original_rgb):
     start_time = time.perf_counter()
     original_bgr = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2BGR)
@@ -323,7 +342,8 @@ def _analyze_image(original_rgb):
     defect_mask, diff_map = run_algorithm_ii_defect_isolation(
         original_resized, a1, a2
     )
-    no_defect_detected = not np.any(defect_mask == 255)
+    detected_pixel_count = int(np.count_nonzero(defect_mask == 255))
+    no_defect_detected = detected_pixel_count == 0
     restored_bgr = run_algorithm_iii_template_alignment(
         original_resized, defect_mask, a1, a2, symmetry_group=detected_group
     )
@@ -334,13 +354,7 @@ def _analyze_image(original_rgb):
             original_gray, restored_gray, defect_mask, None
         )
     )
-    heatmap_bgr = cv2.applyColorMap(
-        cv2.normalize(diff_map, None, 0, 255, cv2.NORM_MINMAX).astype(
-            np.uint8
-        ),
-        cv2.COLORMAP_JET,
-    )
-    heatmap_bgr[defect_mask == 255] = [255, 0, 0]
+    heatmap_bgr = _render_detection_heatmap(diff_map, defect_mask)
     runtime_ms = (time.perf_counter() - start_time) * 1000
 
     classification = None
@@ -504,6 +518,20 @@ def _analyze_image(original_rgb):
         "interpretation": {
             "title": summary_title,
             "summary": summary_text,
+            "detection_explanation": (
+                "No regions crossed the current dark-pixel and local "
+                "texture-deviation thresholds, so no areas were marked for "
+                "repair."
+                if no_defect_detected
+                else (
+                    f"{detected_pixel_count:,} pixels were marked by the "
+                    "combined dark-pixel and local texture-deviation "
+                    "thresholds. Red-tinted regions are marked as possible "
+                    "defects and outlined in yellow. The surrounding heatmap "
+                    "colors show relative texture differences, not a "
+                    "calibrated damage severity."
+                )
+            ),
             "sfs": score_interpretation,
             "wallpaper_group": wallpaper_explanation,
         },
