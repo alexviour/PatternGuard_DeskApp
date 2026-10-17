@@ -21,7 +21,10 @@
       </details>
       <details class="guide-card" id="wallpaper-guide">
         <summary>Wallpaper group guide <span>Understand the detected symmetry group</span></summary>
-        <img class="wallpaper-guide-image" src="{{ url_for('wallpaper_group_guide') }}" alt="Wallpaper group classification reference chart" loading="lazy">
+        <button class="wallpaper-guide-preview" type="button" data-open-wallpaper-guide aria-haspopup="dialog" aria-label="Expand wallpaper group classification chart">
+          <img class="wallpaper-guide-image" src="{{ url_for('wallpaper_group_guide') }}" alt="Wallpaper group classification reference chart" loading="lazy">
+        </button>
+        <p class="wallpaper-guide-hint">Select the chart to view it larger.</p>
       </details>
     </section>
   {% endmacro %}
@@ -42,7 +45,7 @@
     <main class="page-shell">
       <section class="intro">
         <p class="eyebrow">TEXTILE, MADE ACCESSIBLE</p>
-        <h1>Understand and restore Filipino woven patterns.</h1>
+        <h1>Understand Filipino Woven Textiles</h1>
         <p class="intro-copy">
           Upload a Pinilian or Binakol textile image to identify its pattern,
           inspect possible damage, and create a reconstruction report.
@@ -55,6 +58,13 @@
 
       <section class="wizard" id="audit-wizard" data-current-step="1" aria-label="Textile audit">
         {% if not result %}
+          <ol class="wizard-progress" aria-label="Audit stages">
+            <li data-progress-step="1" aria-current="step"><span class="stage-number">1</span><span>Audit &amp; Input</span></li>
+            <li data-progress-step="2" aria-disabled="true"><span class="stage-number">2</span><span>Interpretable Results</span></li>
+            <li data-progress-step="3" aria-disabled="true"><span class="stage-number">3</span><span>Restored Image</span></li>
+            <li data-progress-step="4" aria-disabled="true"><span class="stage-number">4</span><span>Classification &amp; Context</span></li>
+            <li data-progress-step="5" aria-disabled="true"><span class="stage-number">5</span><span>Final Audit Metrics</span></li>
+          </ol>
           <section class="wizard-step upload-card" id="upload" data-step-panel="1" aria-labelledby="upload-title">
             <div class="section-heading">
               <span class="step-number">01</span>
@@ -81,7 +91,7 @@
             <div class="results-heading">
               <div>
                 <p class="eyebrow">AUDIT COMPLETE</p>
-                <h2 id="results-title">Textile analysis</h2>
+                <h2 id="results-title">Textile Analysis</h2>
               </div>
               <a class="button button-secondary" href="{{ url_for('index') }}">Analyze another image</a>
             </div>
@@ -102,11 +112,27 @@
             </ol>
 
             <section class="wizard-step" id="upload" data-step-panel="1" aria-labelledby="step-1-title">
-              <div class="interpretation-card">
-                <p class="eyebrow">AUDIT &amp; INPUT</p>
-                <h3 id="step-1-title" tabindex="-1">Your image has been processed</h3>
-                <p>{{ result.interpretation.title }}. Continue to review the detected regions and restoration.</p>
-                <img class="audit-preview" src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Submitted textile image">
+              <div class="stage-one-grid">
+                <section class="interpretation-card">
+                  <p class="eyebrow">AUDIT &amp; INPUT</p>
+                  <div class="status-line">
+                    <h3 id="step-1-title" tabindex="-1">Pre-Screening Analysis</h3>
+                    <span class="status-badge">IMAGE ACCEPTED</span>
+                  </div>
+                  <p>The uploaded image was oriented, converted to RGB, and normalized to a 256 × 256 analysis canvas before feature extraction.</p>
+                  <div class="grid-preview" role="img" aria-label="Uploaded textile normalized to a 256 by 256 pixel canvas with a spatial grid overlay">
+                    <img src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="">
+                    <span aria-hidden="true"></span>
+                  </div>
+                  <p class="image-caption">Spatial grid · 256 × 256 px</p>
+                </section>
+                <section class="interpretation-card lighting-card" aria-labelledby="lighting-title">
+                  <p class="eyebrow">LIGHTING PRE-SCREENING ANALYSIS</p>
+                  <h3 id="lighting-title">Illumination uniformity</h3>
+                  <p class="lighting-score">{{ result.metrics.illumination_uniformity }} <span>· Quality Check: {{ result.metrics.illumination_quality }}</span></p>
+                  <p>A broad Gaussian-smoothed luminance map is used to estimate large-scale lighting variation. The displayed proxy is 100 × (1 − spatial standard deviation ÷ mean); 90% or above is marked OK. It is a screening aid, not a calibrated photometric measurement.</p>
+                  <p>Spatial normalization makes image dimensions consistent. The lighting check helps identify uneven illumination that can influence the subsequent texture-deviation and lattice analysis.</p>
+                </section>
               </div>
               {{ audit_guides() }}
               <div class="wizard-actions wizard-actions-end">
@@ -117,7 +143,7 @@
             <section class="wizard-step" data-step-panel="2" aria-labelledby="step-2-title" hidden>
               <div class="wizard-title">
                 <p class="eyebrow">INTERPRETABLE RESULTS</p>
-                <h3 id="step-2-title" tabindex="-1">Original and detected regions</h3>
+                <h3 id="step-2-title" tabindex="-1">Original and Detected Regions</h3>
               </div>
               <div class="comparison-grid">
                 <article class="image-card">
@@ -128,8 +154,8 @@
                   <h3>Detected Error Image</h3>
                   <img src="{{ url_for('result_image', result_id=result_id, name='heatmap') }}" alt="Heatmap showing detected textile regions">
                   <p class="heatmap-legend">
-                    <span><i class="heatmap-swatch heatmap-swatch-detected" aria-hidden="true"></i>Possible defects: red tint, yellow outline</span>
-                    <span><i class="heatmap-swatch heatmap-swatch-texture" aria-hidden="true"></i>Background: relative texture difference</span>
+                    <span><i class="heatmap-swatch heatmap-swatch-detected" aria-hidden="true"></i>Red tint with yellow outline: flagged possible defects such as stains or holes</span>
+                    <span><i class="heatmap-swatch heatmap-swatch-texture" aria-hidden="true"></i>Blue/cyan background: relative texture variation, including benign handloom variation</span>
                   </p>
                 </article>
               </div>
@@ -137,7 +163,8 @@
                 <p class="eyebrow">INTERPRETABLE AUDIT RESULT · WHY THESE REGIONS WERE FLAGGED</p>
                 <h3 id="interpretation-title">{{ result.interpretation.title }}</h3>
                 <p>{{ result.interpretation.summary }}</p>
-                <p>{{ result.interpretation.detection_explanation }}</p>
+                <p><strong>Detection rule:</strong> grayscale pixels below 35 and local deviations above 110 are marked; the deviation window is the odd kernel size based on half the smaller repeat distance. Morphological cleanup joins and dilates the mask. These are screening thresholds, not a learned damage diagnosis.</p>
+                <p><strong>Finding:</strong> {{ result.interpretation.detection_explanation }}</p>
                 <p>{{ result.interpretation.sfs }}</p>
               </section>
               <div class="wizard-actions">
@@ -159,6 +186,7 @@
                   </div>
                   <span class="comparison-label comparison-label-before">Original</span>
                   <span class="comparison-label comparison-label-after">Reconstructed</span>
+                  <div class="inspection-lens" data-inspection-lens aria-hidden="true"></div>
                   <div class="comparison-divider" data-comparison-divider aria-hidden="true">
                     <span class="comparison-handle">↔</span>
                   </div>
@@ -173,13 +201,23 @@
                     aria-valuetext="50% original, 50% reconstructed"
                   >
                 </div>
-                <p class="comparison-help">Drag the circular ↔ handle on the vertical divider, or focus the comparison and use the arrow keys.</p>
+                <p class="comparison-help">Drag the circular ↔ handle or use the arrow keys. Move the pointer over the reconstructed side to inspect its texture with the 2× magnifier.</p>
               </section>
               <section class="interpretation-card">
-                <p class="eyebrow">HOW RESTORATION WORKS</p>
+                <p class="eyebrow">SYMMETRY-GUIDED RECONSTRUCTION</p>
                 <h3>{{ result.interpretation.title }}</h3>
-                <p>The detected error heatmap from the previous step highlights regions that differ from their local texture. Its detected mask guides repair: the system estimates the textile's repeating lattice, searches for matching clean pattern patches aligned to that geometry, and uses inpainting as a fallback when no suitable patch is available.</p>
+                <p>The detected mask defines repair regions. For each region, the system searches for a clean donor patch aligned to the estimated repeat spacing and adjusts its local color and contrast. If no donor qualifies, it uses Telea inpainting.</p>
                 <p>{{ result.interpretation.summary }}</p>
+              </section>
+              <section class="interpretation-card fidelity-card" aria-labelledby="fidelity-title">
+                <p class="eyebrow">INPAINTING QUALITY ANALYSIS</p>
+                <h3 id="fidelity-title">Reconstruction Fidelity Indicators</h3>
+                <dl class="fidelity-metrics">
+                  <div><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
+                  <div><dt>SSIM on unmasked regions</dt><dd>{{ result.metrics.ssim }}</dd></div>
+                  <div><dt>Reconstruction accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
+                </dl>
+                <p>These pipeline-derived indicators are not comparisons against independent ground-truth damage labels.</p>
               </section>
               <div class="wizard-actions">
                 <button class="button button-secondary" type="button" data-previous>Previous</button>
@@ -191,6 +229,36 @@
               <div class="wizard-title">
                 <p class="eyebrow">CLASSIFICATION &amp; CONTEXT</p>
                 <h3 id="step-4-title" tabindex="-1">Textile classification and cultural context</h3>
+              </div>
+              <div class="annotated-pattern-card" aria-labelledby="annotation-title">
+                <div>
+                  <p class="eyebrow">SYMMETRY VECTOR ANNOTATIONS</p>
+                  <h3 id="annotation-title">Estimated repeating lattice</h3>
+                  <p>Axes and centers are schematic group annotations, not fitted coordinates. Repeat vectors are estimated as <strong>a⃗₁ = (0, A1)</strong> and <strong>a⃗₂ = (A2, 0)</strong> in image (x, y) coordinates.</p>
+                </div>
+                <div class="annotated-pattern">
+                  <img src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Textile image with estimated symmetry annotations">
+                  <svg viewBox="0 0 256 256" role="img" aria-label="Estimated mirror axes, rotational centers, and lattice spacings">
+                    {% if result.metrics.wallpaper_group in ['pmm', 'p4m', 'cmm'] %}
+                      <line x1="0" y1="128" x2="256" y2="128" class="mirror-axis"></line>
+                      <line x1="128" y1="0" x2="128" y2="256" class="mirror-axis"></line>
+                      <text x="132" y="124" class="lattice-label">m_h</text>
+                      <text x="132" y="12" class="lattice-label">m_v</text>
+                    {% endif %}
+                    {% if result.metrics.wallpaper_group in ['p2', 'pmm', 'p4', 'p4m', 'cmm'] %}
+                      <circle cx="64" cy="64" r="5" class="rotation-center"></circle>
+                      <circle cx="192" cy="64" r="5" class="rotation-center"></circle>
+                      <circle cx="64" cy="192" r="5" class="rotation-center"></circle>
+                      <circle cx="192" cy="192" r="5" class="rotation-center"></circle>
+                      <text x="70" y="70" class="lattice-label">C2</text>
+                    {% endif %}
+                    <line x1="12" y1="238" x2="{{ 12 + result.metrics.a2|int }}" y2="238" class="lattice-dimension"></line>
+                    <text x="16" y="229" class="lattice-label">A2 ≈ {{ result.metrics.a2 }} px</text>
+                    <line x1="238" y1="12" x2="238" y2="{{ 12 + result.metrics.a1|int }}" class="lattice-dimension"></line>
+                    <text x="145" y="20" class="lattice-label">A1 ≈ {{ result.metrics.a1 }} px</text>
+                  </svg>
+                </div>
+                <p class="annotation-legend"><span>Red dashed: estimated mirror axes</span><span>Blue nodes: 180° rotational centers</span><span>Dimensions: estimated lattice spacing</span></p>
               </div>
               <div class="wizard-thumbnails">
                 {% for name, title in [('original', 'Original Image'), ('heatmap', 'Detected Error Heatmap'), ('restored', 'Reconstructed Image')] %}
@@ -209,8 +277,9 @@
               <section class="symmetry-card" aria-labelledby="symmetry-title">
                 <div>
                   <p class="eyebrow">REPEATING-PATTERN SYMMETRY · WALLPAPER GROUP CLASSIFICATION</p>
-                  <h3 id="symmetry-title">{{ result.metrics.wallpaper_group }}</h3>
+                  <h3 id="symmetry-title"><span class="status-badge">Planar group detected: {{ result.metrics.wallpaper_group }}</span></h3>
                   <p>{{ result.interpretation.wallpaper_group }}</p>
+                  <p>Rule-based assignment from local symmetry votes; the classifier does not produce a calibrated confidence percentage.</p>
                   <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
                 </div>
                 <dl class="lattice-values">
@@ -218,8 +287,58 @@
                   <div><dt>A2 repeat spacing</dt><dd>{{ result.metrics.a2 }} px</dd></div>
                 </dl>
               </section>
+              <section class="pipeline-card" aria-labelledby="pipeline-title">
+                <div class="pipeline-heading">
+                  <div>
+                    <p class="eyebrow">TECHNICAL PIPELINE BREAKDOWN</p>
+                    <h3 id="pipeline-title">Wallpaper Group Classification</h3>
+                  </div>
+                  <button class="button button-secondary" type="button" data-open-operations>View Operations Matrix</button>
+                </div>
+                <ol class="pipeline-list proof-steps">
+                  <li>
+                    <strong>FFT autocorrelation → repeat vectors</strong>
+                    <span>F = FFT₂(I); R = |shift(IFFT₂(F · F*))|. The central 20 px are excluded; the strongest remaining peak gives A1 = |Δy| and A2 = |Δx|. If either is &lt; 15 px, that spacing is set to 48 px.</span>
+                    <code class="formula-line">a⃗₁ = (0, {{ result.metrics.a1 }}) px; a⃗₂ = ({{ result.metrics.a2 }}, 0) px; r = A1/A2 = {{ "%.3f"|format(result.wallpaper_evidence.aspect_ratio) }}</code>
+                    <span>Candidate tile: {{ result.wallpaper_evidence.tile_side }} × {{ result.wallpaper_evidence.tile_side }} px; lattice branch: {{ "near-square" if result.wallpaper_evidence.is_square else "non-square" }} (|r − 1| &lt; 0.20 defines near-square).</span>
+                  </li>
+                  <li>
+                    <strong>Local symmetry tests → measured votes</strong>
+                    <span>Each seeded candidate Uᵢ(x,y) ∈ ℝ<sup>L×L</sup> is a local image tile, not a fitted primitive unit cell. The classifier takes its best score over nearby offsets: NCC(A,B) = Σ(A−Ā)(B−B̄) / √[Σ(A−Ā)² Σ(B−B̄)²]. A tile passes at NCC ≥ {{ "%.2f"|format(result.wallpaper_evidence.ncc_threshold) }}; an operation passes when at least {{ "%.0f"|format(result.wallpaper_evidence.vote_threshold * 100) }}% of valid tiles pass. Search radius ±{{ result.wallpaper_evidence.search_radius }} px; step {{ result.wallpaper_evidence.search_step }} px.</span>
+                    <ul class="operation-evidence">
+                      {% for operation in result.wallpaper_evidence.operations %}
+                        <li class="{{ 'evidence-pass' if operation.passed else 'evidence-fail' }}">
+                          <strong>{{ operation.label }}:</strong> {{ operation.vote }}
+                          {% if operation.scores %}<code>Best-offset NCC by tile: [{{ operation.scores }}]</code>{% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </li>
+                  <li>
+                    <strong>Decision mapping → {{ result.metrics.wallpaper_group }}</strong>
+                    <span>{{ result.wallpaper_evidence.decision_path }} This is the implementation's finite-image decision trace, not proof of exact symmetry in the full textile.</span>
+                  </li>
+                </ol>
+                <p class="matrix-caveat"><strong>Reading the difference map:</strong> |I − Tₕ(I)| shows pixel mismatch under a whole-image horizontal flip. Low difference is visual evidence of alignment, but does not by itself establish the group: classification uses best-offset NCC on local tiles and the vote rule above.</p>
+              </section>
+              <dialog class="operations-dialog" data-operations-dialog aria-labelledby="operations-title">
+                <div class="dialog-heading">
+                  <div>
+                    <p class="eyebrow">SYMMETRY OPERATION COMPARISON</p>
+                    <h3 id="operations-title">Operations matrix</h3>
+                  </div>
+                  <button class="dialog-close" type="button" data-close-operations aria-label="Close operations matrix">×</button>
+                </div>
+                <p>These canvases use the full normalized image I(x,y), not an extracted fundamental unit cell. |I − Tₕ(I)| highlights mismatch under a direct horizontal flip; the classifier instead evaluates best-offset NCC over local tiles, as shown in the decision trace.</p>
+                <div class="operations-grid">
+                  <figure><canvas data-operation-canvas="original" width="256" height="256"></canvas><figcaption>I(x,y) · normalized image</figcaption></figure>
+                  <figure><canvas data-operation-canvas="horizontal" width="256" height="256"></canvas><figcaption>Tₕ(I) · horizontal flip</figcaption></figure>
+                  <figure><canvas data-operation-canvas="vertical" width="256" height="256"></canvas><figcaption>Tᵥ(I) · vertical flip</figcaption></figure>
+                  <figure><canvas data-operation-canvas="difference" width="256" height="256"></canvas><figcaption>|I − Tₕ(I)| · pixel difference</figcaption></figure>
+                </div>
+              </dialog>
               <section class="culture-card" aria-labelledby="culture-title">
-                <p class="eyebrow">TEXTILE CLASSIFICATION &amp; CULTURAL CONTEXT</p>
+                <p class="eyebrow">CULTURAL &amp; WEAVING INTERPRETATION</p>
                 <h3 id="culture-title">{{ result.classification.text }}</h3>
                 <p class="confidence">{{ result.classification.confidence }}</p>
                 {% if result.classification.english_name %}
@@ -249,15 +368,15 @@
                     <p class="eyebrow">PATTERN &amp; RESTORATION</p>
                     <h3 id="metrics-title">Audit metrics</h3>
                   </div>
-                  <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download Full PDF File</a>
+                  <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download Full PDF Report</a>
                 </div>
                 <dl class="metric-grid">
-                  <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
-                  <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
-                  <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd></div>
-                  <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd></div>
-                  <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd></div>
-                  <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd></div>
+                  <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>A weighted composite of reconstruction accuracy, SSIM, recall, specificity, and IoU, with a penalty for changes outside the detected mask.</p></details></div>
+                  <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>60% of masked pixels changed by reconstruction plus 40% of unmasked pixels preserved.</p></details></div>
+                  <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels in the detected mask, the proportion also changed by reconstruction.</p></details></div>
+                  <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels outside the detected mask, the proportion changed by reconstruction.</p></details></div>
+                  <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>The overlap of detected-mask pixels and reconstruction-changed pixels divided by their union.</p></details></div>
+                  <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Structural similarity between input and reconstruction, averaged over pixels outside the detected mask.</p></details></div>
                   <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
                 </dl>
                 <details class="metric-help">
@@ -312,6 +431,13 @@
       <span>PatternGuard</span>
       <span>Automated textile auditing &amp; restoration framework</span>
     </footer>
+    <dialog class="wallpaper-guide-dialog" id="wallpaper-guide-dialog" aria-labelledby="wallpaper-guide-dialog-title">
+      <div class="dialog-heading">
+        <h3 id="wallpaper-guide-dialog-title">Wallpaper group guide</h3>
+        <button class="dialog-close" type="button" data-close-wallpaper-guide aria-label="Close wallpaper group guide">×</button>
+      </div>
+      <img class="wallpaper-guide-expanded-image" alt="Expanded wallpaper group classification reference chart">
+    </dialog>
     <script>
       const imageInput = document.getElementById("image");
       if (imageInput) {
@@ -385,21 +511,93 @@
             const bounds = imageStage.getBoundingClientRect();
             const dividerX = bounds.left + (Number(range.value) / 100) * bounds.width;
             if (Math.abs(event.clientX - dividerX) > 36) return;
+            comparison.querySelector("[data-inspection-lens]")?.classList.remove("is-visible");
             isDragging = true;
             imageStage.setPointerCapture(event.pointerId);
             setPositionFromPointer(event);
             event.preventDefault();
           });
           imageStage.addEventListener("pointermove", (event) => {
-            if (isDragging) setPositionFromPointer(event);
+            if (isDragging) {
+              setPositionFromPointer(event);
+              return;
+            }
+            const lens = comparison.querySelector("[data-inspection-lens]");
+            if (!lens) return;
+            const bounds = imageStage.getBoundingClientRect();
+            const x = event.clientX - bounds.left;
+            const y = event.clientY - bounds.top;
+            const lensSize = 120;
+            if (x < (Number(range.value) / 100) * bounds.width) {
+              lens.classList.remove("is-visible");
+              return;
+            }
+            lens.style.backgroundImage =
+              `url("${comparison.querySelector(".after-image img").currentSrc}")`;
+            lens.style.left = `${Math.max(0, Math.min(bounds.width - lensSize, x - lensSize / 2))}px`;
+            lens.style.top = `${Math.max(0, Math.min(bounds.height - lensSize, y - lensSize / 2))}px`;
+            lens.style.backgroundSize = `${bounds.width * 2}px ${bounds.height * 2}px`;
+            lens.style.backgroundPosition = `${-(x * 2 - lensSize / 2)}px ${-(y * 2 - lensSize / 2)}px`;
+            lens.classList.add("is-visible");
           });
           const stopDragging = () => {
             isDragging = false;
           };
           imageStage.addEventListener("pointerup", stopDragging);
           imageStage.addEventListener("pointercancel", stopDragging);
+          imageStage.addEventListener("pointerleave", () => {
+            comparison.querySelector("[data-inspection-lens]")?.classList.remove("is-visible");
+          });
           updateComparison();
         });
+
+        const operationsDialog = wizard.querySelector("[data-operations-dialog]");
+        const openOperations = wizard.querySelector("[data-open-operations]");
+        if (operationsDialog && openOperations) {
+          openOperations.addEventListener("click", () => {
+            operationsDialog.showModal();
+            const source = wizard.querySelector(".annotated-pattern img");
+            if (!source.complete || !source.naturalWidth) {
+              source.addEventListener("load", () => renderOperations(source), { once: true });
+            } else {
+              renderOperations(source);
+            }
+          });
+          operationsDialog.querySelector("[data-close-operations]").addEventListener("click", () => {
+            operationsDialog.close();
+          });
+        }
+
+        function renderOperations(source) {
+          const canvases = Object.fromEntries(
+            Array.from(operationsDialog.querySelectorAll("[data-operation-canvas]"))
+              .map((canvas) => [canvas.dataset.operationCanvas, canvas])
+          );
+          const original = canvases.original.getContext("2d", { willReadFrequently: true });
+          original.drawImage(source, 0, 0, 256, 256);
+          const originalPixels = original.getImageData(0, 0, 256, 256);
+          const horizontal = canvases.horizontal.getContext("2d");
+          horizontal.save();
+          horizontal.translate(256, 0);
+          horizontal.scale(-1, 1);
+          horizontal.drawImage(source, 0, 0, 256, 256);
+          horizontal.restore();
+          const vertical = canvases.vertical.getContext("2d");
+          vertical.save();
+          vertical.translate(0, 256);
+          vertical.scale(1, -1);
+          vertical.drawImage(source, 0, 0, 256, 256);
+          vertical.restore();
+          const flippedPixels = horizontal.getImageData(0, 0, 256, 256);
+          for (let index = 0; index < originalPixels.data.length; index += 4) {
+            for (let channel = 0; channel < 3; channel += 1) {
+              originalPixels.data[index + channel] = Math.abs(
+                originalPixels.data[index + channel] - flippedPixels.data[index + channel]
+              );
+            }
+          }
+          canvases.difference.getContext("2d").putImageData(originalPixels, 0, 0);
+        }
 
         showStep(currentStep);
       }
@@ -415,6 +613,25 @@
           if (guide) guide.open = true;
         });
       });
+
+      const wallpaperGuideDialog = document.getElementById("wallpaper-guide-dialog");
+      if (wallpaperGuideDialog) {
+        const expandedGuideImage = wallpaperGuideDialog.querySelector(".wallpaper-guide-expanded-image");
+        document.querySelectorAll("[data-open-wallpaper-guide]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const previewImage = button.querySelector(".wallpaper-guide-image");
+            if (!previewImage) return;
+            expandedGuideImage.src = previewImage.currentSrc || previewImage.src;
+            wallpaperGuideDialog.showModal();
+          });
+        });
+        wallpaperGuideDialog.querySelector("[data-close-wallpaper-guide]").addEventListener("click", () => {
+          wallpaperGuideDialog.close();
+        });
+        wallpaperGuideDialog.addEventListener("click", (event) => {
+          if (event.target === wallpaperGuideDialog) wallpaperGuideDialog.close();
+        });
+      }
 
     </script>
   </body>

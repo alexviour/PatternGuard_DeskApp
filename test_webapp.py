@@ -186,6 +186,15 @@ class WebAppTests(unittest.TestCase):
         self.assertTrue(response.data.startswith(b"\xff\xd8\xff"))
         response.close()
 
+    def test_wallpaper_guide_can_be_expanded(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'data-open-wallpaper-guide', response.data)
+        self.assertIn(b'aria-haspopup="dialog"', response.data)
+        self.assertIn(b'id="wallpaper-guide-dialog"', response.data)
+        self.assertIn(b'data-close-wallpaper-guide', response.data)
+
     def test_detection_heatmap_highlights_mask_without_changing_mask(self):
         diff_map = np.zeros((20, 20), dtype=np.float32)
         defect_mask = np.zeros((20, 20), dtype=np.uint8)
@@ -279,9 +288,27 @@ class WebAppTests(unittest.TestCase):
             b'data-comparison-range',
             b'aria-label="Compare original and reconstructed textile"',
             b"Drag the circular",
-            b"detected error heatmap from the previous step",
+            b"IMAGE ACCEPTED",
+            b"Illumination uniformity",
+            b"grid-preview",
+            b"data-inspection-lens",
+            b"SYMMETRY-GUIDED RECONSTRUCTION",
+            b"Telea inpainting",
+            b"SYMMETRY VECTOR ANNOTATIONS",
+            b"Planar group detected:",
+            b"TECHNICAL PIPELINE BREAKDOWN",
+            b"FFT autocorrelation",
+            b"NCC(A,B)",
+            b"Best-offset NCC by tile:",
+            b"finite-image decision trace",
+            b"not an extracted fundamental unit cell",
+            b"Reading the difference map:",
+            b"View Operations Matrix",
+            b"operations-grid",
+            b"CULTURAL &amp; WEAVING INTERPRETATION",
+            b"Download Full PDF Report",
+            b"The detected mask defines repair regions.",
             b"Download preliminary PDF report",
-            b"Download Full PDF File",
             b"Audit another textile",
             b"dark-pixel and local texture-deviation thresholds",
         ):

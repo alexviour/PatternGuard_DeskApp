@@ -335,9 +335,21 @@ def _analyze_image(original_rgb):
     original_bgr = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2BGR)
     original_resized = cv2.resize(original_bgr, (256, 256))
     original_gray = cv2.cvtColor(original_resized, cv2.COLOR_BGR2GRAY)
+    illumination_map = cv2.GaussianBlur(
+        original_gray, (0, 0), sigmaX=16
+    ).astype(np.float32)
+    illumination_mean = float(np.mean(illumination_map))
+    illumination_variation = (
+        float(np.std(illumination_map)) / illumination_mean
+        if illumination_mean > 0
+        else 1.0
+    )
+    illumination_score = float(
+        np.clip((1.0 - illumination_variation) * 100.0, 0.0, 100.0)
+    )
 
-    _, a1, a2, _, detected_group = run_algorithm_i_autocorrelation(
-        original_gray
+    _, a1, a2, _, detected_group, wallpaper_evidence = (
+        run_algorithm_i_autocorrelation(original_gray, include_evidence=True)
     )
     defect_mask, diff_map = run_algorithm_ii_defect_isolation(
         original_resized, a1, a2
@@ -442,33 +454,95 @@ def _analyze_image(original_rgb):
         summary_title = (
             "Detected areas were reconstructed"
             if sfs_score >= 95.0
-            else "Review the reconstruction before relying on it"
+            else "Review the Reconstruction"
         )
         summary_text = (
             f"The audit marked {int(np.count_nonzero(defect_mask)):,} pixels "
             "in the 256 × 256 analysis image as possible defects, then "
             "attempted to reconstruct those areas from repeating textile "
-            "patterns. Review the original, detected-area heatmap, and "
+            "patterns. Review the original, detected error heatmap, and "
             "reconstruction side by side."
         )
         score_interpretation = (
-            f"The Symmetry Fidelity Score is {sfs_score:.2f}%. The desktop "
-            "app uses 95% as its display threshold; this is a project-defined "
-            "indicator, not a validated guarantee of restoration quality. "
-            "Compare the images and the individual metrics before accepting "
-            "the result."
+            f"The Symmetry Fidelity Score is {sfs_score:.2f}%."
         )
     wallpaper_explanation = WALLPAPER_GROUP_EXPLANATIONS.get(
         group,
         "The detected repeat did not match one of the listed symmetry "
         "groups, or classification was unavailable.",
     )
+    operation_labels = {
+        "mirror_h": "T_h: horizontal reflection",
+        "mirror_v": "T_v: vertical reflection",
+        "rotation_180": "C_2: 180° rotation",
+        "rotation_90": "C_4: 90° rotation",
+    }
+    operation_evidence = []
+    for operation_name, label in operation_labels.items():
+        operation = wallpaper_evidence["operations"].get(operation_name)
+        if operation is None:
+            vote_text = "Not evaluated for this lattice branch."
+            scores_text = ""
+            passed = False
+        elif operation["valid_count"] == 0:
+            vote_text = "No valid candidate tiles."
+            scores_text = ""
+            passed = False
+        else:
+            vote_text = (
+                f'{operation["pass_count"]}/{operation["valid_count"]} tiles '
+                f'met NCC ≥ {wallpaper_evidence["ncc_threshold"]:.2f}; '
+                f'vote {operation["vote_fraction"]:.0%} '
+                f'({"pass" if operation["passed"] else "fail"})'
+            )
+            scores_text = ", ".join(
+                f'{score:.3f}' for score in operation["scores"]
+            )
+            passed = operation["passed"]
+        operation_evidence.append(
+            {
+                "label": label,
+                "vote": vote_text,
+                "scores": scores_text,
+                "passed": passed,
+            }
+        )
+    wallpaper_evidence_display = {
+        "a1_vector": f"(0, {a1:.1f}) px",
+        "a2_vector": f"({a2:.1f}, 0) px",
+        "aspect_ratio": wallpaper_evidence["aspect_ratio"],
+        "is_square": wallpaper_evidence["is_square"],
+        "tile_side": wallpaper_evidence["tile_side"],
+        "search_radius": wallpaper_evidence["search_radius"],
+        "search_step": wallpaper_evidence["search_step"],
+        "ncc_threshold": wallpaper_evidence["ncc_threshold"],
+        "vote_threshold": wallpaper_evidence["vote_fraction_threshold"],
+        "decision_path": wallpaper_evidence["decision_path"],
+        "operations": operation_evidence,
+    }
     details = (
         f"Classification Result:\n{classification_text}\n{confidence_text}\n\n"
         f"Audit summary: {summary_text}\n\n"
         f"Pattern analysis estimated repeat spacing A1 = {a1:.1f} and "
         f"A2 = {a2:.1f} pixels in the 256 × 256 analysis image. It classified "
         f"the wallpaper group as {group}: {wallpaper_explanation}\n\n"
+        "Wallpaper-group decision trace: F = FFT2(I); R = "
+        "|fftshift(IFFT2(F × conjugate(F)))|. The central 20-pixel disk is "
+        "excluded before selecting the strongest autocorrelation peak. "
+        f"The estimated repeat vectors are a1 = {wallpaper_evidence_display['a1_vector']} "
+        f"and a2 = {wallpaper_evidence_display['a2_vector']}; the ratio "
+        f"a1/a2 = {wallpaper_evidence['aspect_ratio']:.3f} selects the "
+        f'{"near-square" if wallpaper_evidence["is_square"] else "non-square"} '
+        "decision branch. Local tiles use zero-mean normalized cross-correlation "
+        "with NCC threshold "
+        f"{wallpaper_evidence['ncc_threshold']:.2f} and vote threshold "
+        f"{wallpaper_evidence['vote_fraction_threshold']:.0%}. "
+        f"{wallpaper_evidence['decision_path']}\n\n"
+        + "\n".join(
+            f"{item['label']}: {item['vote']}; NCC scores [{item['scores']}]"
+            for item in operation_evidence
+        )
+        + "\n\n"
         "Possible defects are detected by combining dark-pixel thresholding "
         "with local texture-deviation thresholds. Reconstruction searches "
         "for matching clean patches aligned to the estimated lattice, with "
@@ -535,11 +609,16 @@ def _analyze_image(original_rgb):
             "sfs": score_interpretation,
             "wallpaper_group": wallpaper_explanation,
         },
+        "wallpaper_evidence": wallpaper_evidence_display,
         "metrics": {
             "sfs": score_text,
             "wallpaper_group": group,
             "a1": f"{a1:.1f}",
             "a2": f"{a2:.1f}",
+            "illumination_uniformity": f"{illumination_score:.0f}%",
+            "illumination_quality": (
+                "OK" if illumination_score >= 90.0 else "Review lighting"
+            ),
             "accuracy": f"{accuracy:.1f}%",
             "recall": f"{recall:.1f}%",
             "fpr": f"{fpr:.1f}%",
@@ -612,5 +691,5 @@ if __name__ == "__main__":
     app.run(
         host=os.environ.get("PATTERNGUARD_HOST", "0.0.0.0"),
         port=port,
-        debug=False,
+        debug=True,
     )
