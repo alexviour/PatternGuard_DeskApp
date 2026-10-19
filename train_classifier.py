@@ -2,36 +2,30 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import datasets, transforms, models
+from torchvision import datasets
 from torch.utils.data import DataLoader
+
+from classifier_components import build_classifier_model, build_training_transform
+
 
 def train_model(data_dir="dataset", save_path="models/pattern_classifier.pth", epochs=15, batch_size=8, lr=0.001):
     # Ensure models directory exists
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
-    # Image Transforms
-    data_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    
+
     # Load Dataset
     if not os.path.exists(data_dir):
         raise FileNotFoundError(f"Dataset folder '{data_dir}' not found. Please create it and add subclass folders.")
         
-    dataset = datasets.ImageFolder(root=data_dir, transform=data_transforms)
+    dataset = datasets.ImageFolder(
+        root=data_dir, transform=build_training_transform()
+    )
     num_classes = len(dataset.classes)
     print(f"Loaded dataset with {len(dataset)} images across {num_classes} classes: {dataset.classes}")
     
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     
     # Backbone: MobileNetV3-Small
-    model = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
-    in_features = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_features, num_classes)
+    model = build_classifier_model(num_classes, pretrained=True)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)

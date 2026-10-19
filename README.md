@@ -27,6 +27,49 @@ expire after 30 minutes. It includes textile analysis, classification, metrics,
 PDF and PNG exports, the textile reference archive, capture tips, and wallpaper
 group guide.
 
+## Evaluate classification and pipeline performance
+
+Run the evaluation from the project root:
+
+```powershell
+python evaluate_pipeline.py
+```
+
+The evaluator makes a reproducible, stratified train/validation/test split by
+textile class (approximately 70%/15%/15%, with at least one validation and
+test image per class), fine-tunes the same pretrained MobileNetV3-Small
+classifier, selects the epoch using validation accuracy/loss, and reports
+held-out accuracy, macro/weighted precision, recall, F1, per-class metrics,
+confusion matrix, and coverage/accuracy at the app's 80% confidence cutoff.
+The test split is not used for training or model selection. Training uses
+pretrained Torchvision weights; the first run may need network access to
+download those weights.
+
+It also creates controlled black-rectangle defects on held-out clean textile
+images and reports pixel-level detection precision/recall/F1/IoU and
+restoration comparisons against the uncorrupted source. These synthetic scores
+are only a repeatable sanity check and must not be presented as accuracy on
+real-world damage. The repository does not currently contain expert-labeled
+damage masks.
+
+Finally, it benchmarks the warmed `webapp._analyze_image` path at 256, 512,
+and 1024 square input resolutions, reporting mean/median/P95 latency and
+sampled peak process-RSS increase. This includes DSP, classifier inference,
+metrics, and PNG encoding, but excludes HTTP upload decoding and PDF export.
+The same report explains the pipeline's asymptotic time/space complexity.
+
+The default run can take several minutes because it trains for 15 epochs and
+benchmarks multiple inputs over 10 repeats. To adjust the run, for example:
+
+```powershell
+python evaluate_pipeline.py --epochs 5 --benchmark-images 3 --benchmark-repeats 1
+```
+
+The evaluator writes `evaluation_results.json` and a readable
+`evaluation_results.md` to the project root. Results are machine- and
+dataset-dependent; report the test-set size and hardware alongside the
+measured scores and timings.
+
 ## Deploying a free evaluation copy to Render
 
 The repository includes a Render Blueprint in `render.yaml`. To deploy:

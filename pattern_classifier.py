@@ -1,7 +1,11 @@
 import torch
-import torch.nn as nn
-from torchvision import models, transforms
 from PIL import Image
+
+from classifier_components import (
+    build_classifier_model,
+    build_inference_transform,
+)
+
 
 class PatternClassifier:
     MIN_SUPPORTED_CONFIDENCE = 80.0
@@ -19,20 +23,13 @@ class PatternClassifier:
             raise KeyError("Could not find class list or class mapping in checkpoint.")
 
         # Re-build MobileNetV3-Small architecture
-        self.model = models.mobilenet_v3_small(weights=None)
-        num_ftrs = self.model.classifier[3].in_features
-        self.model.classifier[3] = nn.Linear(num_ftrs, len(self.classes))
-        
+        self.model = build_classifier_model(len(self.classes))
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.to(self.device)
         self.model.eval()
 
         # Fast CPU preprocess transform
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+        self.transform = build_inference_transform()
 
     def predict(self, image_path):
         image = Image.open(image_path).convert('RGB')

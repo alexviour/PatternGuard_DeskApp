@@ -1,0 +1,476 @@
+{
+  "classifier": {
+    "dataset_images": 170,
+    "class_count": 11,
+    "classes": [
+      "binakol_concha_concha",
+      "binakol_kinkinelleng",
+      "binakol_kulalabang",
+      "binakol_kusikus",
+      "binakol_paddak_ti_pusa",
+      "pinilian_sinan_agatul",
+      "pinilian_sinan_bayabas",
+      "pinilian_sinan_bituwon",
+      "pinilian_sinan_init",
+      "pinilian_sinan_kabalyo",
+      "pinilian_sinan_sabong"
+    ],
+    "split_counts_by_class": {
+      "train": {
+        "binakol_concha_concha": 7,
+        "binakol_kinkinelleng": 6,
+        "binakol_kulalabang": 8,
+        "binakol_kusikus": 21,
+        "binakol_paddak_ti_pusa": 8,
+        "pinilian_sinan_agatul": 12,
+        "pinilian_sinan_bayabas": 13,
+        "pinilian_sinan_bituwon": 6,
+        "pinilian_sinan_init": 4,
+        "pinilian_sinan_kabalyo": 22,
+        "pinilian_sinan_sabong": 11
+      },
+      "validation": {
+        "binakol_concha_concha": 1,
+        "binakol_kinkinelleng": 2,
+        "binakol_kulalabang": 2,
+        "binakol_kusikus": 4,
+        "binakol_paddak_ti_pusa": 2,
+        "pinilian_sinan_agatul": 3,
+        "pinilian_sinan_bayabas": 3,
+        "pinilian_sinan_bituwon": 1,
+        "pinilian_sinan_init": 1,
+        "pinilian_sinan_kabalyo": 4,
+        "pinilian_sinan_sabong": 3
+      },
+      "test": {
+        "binakol_concha_concha": 1,
+        "binakol_kinkinelleng": 2,
+        "binakol_kulalabang": 2,
+        "binakol_kusikus": 4,
+        "binakol_paddak_ti_pusa": 2,
+        "pinilian_sinan_agatul": 3,
+        "pinilian_sinan_bayabas": 3,
+        "pinilian_sinan_bituwon": 1,
+        "pinilian_sinan_init": 1,
+        "pinilian_sinan_kabalyo": 4,
+        "pinilian_sinan_sabong": 3
+      }
+    },
+    "device": "cpu",
+    "epochs_requested": 15,
+    "best_epoch": 14,
+    "training_seconds": 82.91951950000657,
+    "validation": {
+      "loss_at_best_epoch": 0.38723628108318037,
+      "accuracy_at_best_epoch": 0.9230769230769231
+    },
+    "test_loss": 0.2690880875676297,
+    "test": {
+      "samples": 26,
+      "accuracy": 0.8846153846153846,
+      "macro_precision": 0.9090909090909091,
+      "macro_recall": 0.8939393939393939,
+      "macro_f1": 0.8606060606060606,
+      "weighted_f1": 0.882051282051282,
+      "confidence_threshold_percent": 80.0,
+      "coverage_at_threshold": 0.8846153846153846,
+      "accepted_accuracy": 1.0,
+      "accepted_samples": 23,
+      "per_class": [
+        {
+          "class": "binakol_concha_concha",
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "binakol_kinkinelleng",
+          "support": 2,
+          "precision": 0.6666666666666666,
+          "recall": 1.0,
+          "f1": 0.8
+        },
+        {
+          "class": "binakol_kulalabang",
+          "support": 2,
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6666666666666666
+        },
+        {
+          "class": "binakol_kusikus",
+          "support": 4,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "binakol_paddak_ti_pusa",
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "pinilian_sinan_agatul",
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "pinilian_sinan_bayabas",
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "pinilian_sinan_bituwon",
+          "support": 1,
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5
+        },
+        {
+          "class": "pinilian_sinan_init",
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "pinilian_sinan_kabalyo",
+          "support": 4,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        {
+          "class": "pinilian_sinan_sabong",
+          "support": 3,
+          "precision": 1.0,
+          "recall": 0.3333333333333333,
+          "f1": 0.5
+        }
+      ],
+      "confusion_matrix": [
+        [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    "epoch_history": [
+      {
+        "epoch": 1,
+        "train_loss": 2.025269385111534,
+        "validation_loss": 1.6235573108379657,
+        "validation_accuracy": 0.38461538461538464
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.6536844322236918,
+        "validation_loss": 0.9667278436514047,
+        "validation_accuracy": 0.6923076923076923
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.3665521432787685,
+        "validation_loss": 1.3598790718958929,
+        "validation_accuracy": 0.5769230769230769
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.40093189736796636,
+        "validation_loss": 1.125353386768928,
+        "validation_accuracy": 0.7307692307692307
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.27250262646604395,
+        "validation_loss": 0.5451197303258456,
+        "validation_accuracy": 0.8461538461538461
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.24427842651888476,
+        "validation_loss": 0.3646360824887569,
+        "validation_accuracy": 0.8846153846153846
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.1558600920489279,
+        "validation_loss": 0.578324856236577,
+        "validation_accuracy": 0.8461538461538461
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.2586638555562092,
+        "validation_loss": 0.5054439254678212,
+        "validation_accuracy": 0.8846153846153846
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.24232089900711584,
+        "validation_loss": 0.409402745274397,
+        "validation_accuracy": 0.8846153846153846
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.33811714787478164,
+        "validation_loss": 0.4912871214059683,
+        "validation_accuracy": 0.8076923076923077
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.250224129880889,
+        "validation_loss": 0.6344930515266382,
+        "validation_accuracy": 0.8461538461538461
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.15533710995657465,
+        "validation_loss": 0.5050850350123185,
+        "validation_accuracy": 0.8076923076923077
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.13518221943907566,
+        "validation_loss": 0.3834458108131702,
+        "validation_accuracy": 0.8461538461538461
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.08746964100085325,
+        "validation_loss": 0.38723628108318037,
+        "validation_accuracy": 0.9230769230769231
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.10054280610470953,
+        "validation_loss": 0.8581694519290557,
+        "validation_accuracy": 0.8461538461538461
+      }
+    ],
+    "evaluation_note": "The final test subset is held out from optimizer updates and model selection. The dataset is small, so per-class test estimates have substantial sampling uncertainty."
+  },
+  "complexity": {
+    "time": "For an input HxW image, decoding/conversion and resizing require O(HW) work. After resize to N pixels (currently 256x256), FFT autocorrelation is O(N log N); fixed-window threshold/morphology operations are approximately O(N). For C connected defect components, donor search is O(C * Q * P), where P is the padded component patch area and Q is bounded by 2,352 candidate offsets in the current nested search. Classifier inference uses a fixed 224x224 input, so its cost is O(F) per image for model operations F. Training for E epochs over D images costs O(E * D * F) with forward/backward work. The benchmark provides empirical inference timings.",
+    "space": "Image decoding and the original RGB image use O(HW) memory. The fixed-size DSP maps use O(N) memory with multiple constant-sized arrays; donor matching uses temporary O(P) patches. Classifier inference uses O(M + A) memory for M model parameters and activations A. Training uses O(M + B*A) memory for model parameters, optimizer state, and activations for batch size B. Peak RSS deltas are measured empirically by the benchmark.",
+    "limits": "Runtime and RSS are hardware-, operating-system-, and library-dependent. Synthetic defect scores do not replace evaluation on independently expert-labeled damaged textiles."
+  },
+  "environment": {
+    "operating_system": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.14.8",
+    "cpu": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "logical_cpu_count": 12,
+    "torch_version": "2.14.1+cpu",
+    "opencv_version": "5.0.0",
+    "torch_cpu_threads": 1
+  },
+  "synthetic_restoration": {
+    "samples": 5,
+    "synthetic_corruption": "Two filled black rectangles per held-out image; this controlled test is not a substitute for expert-labeled real damage.",
+    "pixel_detection": {
+      "precision": 0.4478021978021978,
+      "recall": 1.0,
+      "f1": 0.618595825426945,
+      "iou": 0.4478021978021978,
+      "pixel_accuracy": 0.9944793701171875,
+      "confusion_counts": {
+        "tp": 1467,
+        "fp": 1809,
+        "fn": 0,
+        "tn": 324404
+      },
+      "mean_per_image_precision": 0.6519443997166223,
+      "mean_per_image_recall": 1.0,
+      "mean_per_image_iou": 0.6519443997166223
+    },
+    "restoration": {
+      "mean_mae_in_synthetic_defect_before": 122.56275329589843,
+      "mean_mae_in_synthetic_defect_after": 15.588144874572754,
+      "mean_mae_change_outside_synthetic_mask": 0.4044463362544775,
+      "mean_ssim_vs_clean_reference": 0.9908034546823501
+    },
+    "elapsed_seconds": 2.809624600005918,
+    "mean_seconds_per_image": 0.5619249200011837,
+    "interpretation_limit": "Metrics use synthetic black rectangles as known ground truth. They do not establish performance on naturally occurring textile damage."
+  },
+  "pipeline_benchmark": {
+    "scope": "Warm, in-process call to webapp._analyze_image, including the DSP audit, classifier inference, metrics, and PNG encoding; excludes HTTP upload decoding and PDF export.",
+    "classifier_device": "cpu",
+    "warmup_runs_excluded": 1,
+    "results_by_input_resolution": [
+      {
+        "input_resolution": "256x256",
+        "repetitions": 10,
+        "mean_seconds": 0.6048609900011798,
+        "median_seconds": 0.19916149999335175,
+        "p95_seconds": 2.1415225000091596,
+        "mean_peak_rss_increase_bytes": 2296217.6,
+        "max_peak_rss_increase_bytes": 3661824
+      },
+      {
+        "input_resolution": "512x512",
+        "repetitions": 10,
+        "mean_seconds": 0.5647972800012212,
+        "median_seconds": 0.2098513000019011,
+        "p95_seconds": 1.9244913999864366,
+        "mean_peak_rss_increase_bytes": 2262630.4,
+        "max_peak_rss_increase_bytes": 3190784
+      },
+      {
+        "input_resolution": "1024x1024",
+        "repetitions": 10,
+        "mean_seconds": 0.7498176200024318,
+        "median_seconds": 0.3683314999943832,
+        "p95_seconds": 2.2777905000111787,
+        "mean_peak_rss_increase_bytes": 7534592,
+        "max_peak_rss_increase_bytes": 8798208
+      }
+    ],
+    "memory_method": "Peak process resident working-set increase sampled every 10 ms; baseline is measured after model warm-up."
+  }
+}
