@@ -25,7 +25,10 @@ The browser app accepts PNG and JPEG images up to 10 MB. Uploaded images are
 processed in memory or temporary files; cached results are limited to five and
 expire after 30 minutes. It includes textile analysis, classification, metrics,
 PDF and PNG exports, the textile reference archive, capture tips, and wallpaper
-group guide.
+group guide. Before analysis, you can optionally paint over tears or holes that
+automatic screening may miss; marked areas are added to the reconstruction
+mask. Repairs are estimates from repeated patterns and cannot guarantee recovery
+of the original weave.
 
 ## Deploying a free evaluation copy to Render
 

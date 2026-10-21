@@ -82,6 +82,22 @@
                 <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required>
               </label>
               <p class="file-name" id="file-name" aria-live="polite">No image selected</p>
+              <section class="damage-markup" data-damage-markup hidden aria-labelledby="damage-markup-title">
+                <h3 id="damage-markup-title">Mark damage the detector may miss</h3>
+                <p>Paint over tears or holes to add them to the repair mask. Mark the full damaged area; the result is an estimate based on nearby repeating patterns, not a guaranteed recovery of the original weave.</p>
+                <div class="damage-markup-tools">
+                  <button class="button button-secondary is-active" type="button" data-damage-tool="mark" aria-pressed="true">Mark damage</button>
+                  <button class="button button-secondary" type="button" data-damage-tool="erase" aria-pressed="false">Erase</button>
+                  <label for="damage-brush-size">Brush <output data-brush-size-value>12</output> px</label>
+                  <input id="damage-brush-size" type="range" min="3" max="36" value="12" aria-label="Damage marking brush size">
+                  <button class="button button-secondary" type="button" data-clear-damage>Clear marks</button>
+                </div>
+                <div class="damage-markup-canvas">
+                  <img data-damage-preview alt="Selected textile image for marking damaged areas">
+                  <canvas data-damage-canvas width="256" height="256" aria-label="Paint over textile damage to include it in reconstruction"></canvas>
+                </div>
+                <input type="hidden" name="damage_mask" data-damage-mask>
+              </section>
               <button class="button button-primary" type="submit">Analyze textile</button>
             </form>
             {{ audit_guides() }}
@@ -143,7 +159,7 @@
             <section class="wizard-step" data-step-panel="2" aria-labelledby="step-2-title" hidden>
               <div class="wizard-title">
                 <p class="eyebrow">INTERPRETABLE RESULTS</p>
-                <h3 id="step-2-title" tabindex="-1">Original and Detected Regions</h3>
+                <h3 id="step-2-title" tabindex="-1">Original and Repair Regions</h3>
               </div>
               <div class="comparison-grid">
                 <article class="image-card">
@@ -151,10 +167,10 @@
                   <img src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Original textile image">
                 </article>
                 <article class="image-card">
-                  <h3>Detected Error Image</h3>
-                  <img src="{{ url_for('result_image', result_id=result_id, name='heatmap') }}" alt="Heatmap showing detected textile regions">
+                  <h3>Repair Mask and Texture Map</h3>
+                  <img src="{{ url_for('result_image', result_id=result_id, name='heatmap') }}" alt="Heatmap showing automatically detected and user-marked repair regions">
                   <p class="heatmap-legend">
-                    <span><i class="heatmap-swatch heatmap-swatch-detected" aria-hidden="true"></i>Red tint with yellow outline: flagged possible defects such as stains or holes</span>
+                    <span><i class="heatmap-swatch heatmap-swatch-detected" aria-hidden="true"></i>Red tint with yellow outline: automatically flagged or user-marked repair areas</span>
                     <span><i class="heatmap-swatch heatmap-swatch-texture" aria-hidden="true"></i>Blue/cyan background: relative texture variation, including benign handloom variation</span>
                   </p>
                 </article>
@@ -206,7 +222,7 @@
               <section class="interpretation-card">
                 <p class="eyebrow">SYMMETRY-GUIDED RECONSTRUCTION</p>
                 <h3>{{ result.interpretation.title }}</h3>
-                <p>The detected mask defines repair regions. For each region, the system searches for a clean donor patch aligned to the estimated repeat spacing and adjusts its local color and contrast. If no donor qualifies, it uses Telea inpainting.</p>
+                <p>The automatically detected mask and any areas you painted define repair regions. For each region, the system searches for a clean donor patch aligned to the estimated repeat spacing and adjusts its local color and contrast. If no donor qualifies, it uses Telea inpainting.</p>
                 <p>{{ result.interpretation.summary }}</p>
               </section>
               <section class="interpretation-card fidelity-card" aria-labelledby="fidelity-title">
@@ -371,12 +387,12 @@
                   <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download Full PDF Report</a>
                 </div>
                 <dl class="metric-grid">
-                  <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>A weighted composite of reconstruction accuracy, SSIM, recall, specificity, and IoU, with a penalty for changes outside the detected mask.</p></details></div>
+                  <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>A weighted composite of reconstruction accuracy, SSIM, recall, specificity, and IoU, with a penalty for changes outside the repair mask.</p></details></div>
                   <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>60% of masked pixels changed by reconstruction plus 40% of unmasked pixels preserved.</p></details></div>
-                  <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels in the detected mask, the proportion also changed by reconstruction.</p></details></div>
-                  <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels outside the detected mask, the proportion changed by reconstruction.</p></details></div>
-                  <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>The overlap of detected-mask pixels and reconstruction-changed pixels divided by their union.</p></details></div>
-                  <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Structural similarity between input and reconstruction, averaged over pixels outside the detected mask.</p></details></div>
+                  <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels in the repair mask, the proportion also changed by reconstruction.</p></details></div>
+                  <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels outside the repair mask, the proportion changed by reconstruction.</p></details></div>
+                  <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>The overlap of repair-mask pixels and reconstruction-changed pixels divided by their union.</p></details></div>
+                  <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Structural similarity between input and reconstruction, averaged over pixels outside the repair mask.</p></details></div>
                   <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
                 </dl>
                 <details class="metric-help">
@@ -384,12 +400,12 @@
                   <dl class="metric-definitions">
                     <div><dt>Symmetry Fidelity Score (SFS)</dt><dd>A composite score using accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive rate (15%), and IoU (10%), with a penalty for background changes. The desktop app uses 95% as a display threshold; it is not a validated guarantee.</dd></div>
                     <div><dt>Accuracy</dt><dd>A weighted score: 60% of masked pixels changed during reconstruction plus 40% of unmasked pixels preserved.</dd></div>
-                    <div><dt>Recall</dt><dd>Of all pixels in the detected mask, the percentage also changed by reconstruction.</dd></div>
-                    <div><dt>False positive rate</dt><dd>Of pixels outside the detected mask, the percentage changed by reconstruction.</dd></div>
-                    <div><dt>Intersection over Union (IoU)</dt><dd>Overlap between the detected mask and changed pixels, divided by their combined area.</dd></div>
-                    <div><dt>Structural Similarity (SSIM)</dt><dd>Structural similarity between the input and reconstruction in regions outside the detected mask.</dd></div>
+                    <div><dt>Recall</dt><dd>Of all pixels in the repair mask, the percentage also changed by reconstruction.</dd></div>
+                    <div><dt>False positive rate</dt><dd>Of pixels outside the repair mask, the percentage changed by reconstruction.</dd></div>
+                    <div><dt>Intersection over Union (IoU)</dt><dd>Overlap between the repair mask and changed pixels, divided by their combined area.</dd></div>
+                    <div><dt>Structural Similarity (SSIM)</dt><dd>Structural similarity between the input and reconstruction in regions outside the repair mask.</dd></div>
                   </dl>
-                  <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the detected mask with pixels changed by reconstruction. If no defects are detected, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
+                  <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the repair mask, which may include user-painted regions, with pixels changed by reconstruction. If no areas are marked for repair, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
                 </details>
               </section>
               <div class="wizard-actions">
@@ -441,10 +457,101 @@
     <script>
       const imageInput = document.getElementById("image");
       if (imageInput) {
+        const damageMarkup = document.querySelector("[data-damage-markup]");
+        const damageCanvas = document.querySelector("[data-damage-canvas]");
+        const damagePreview = document.querySelector("[data-damage-preview]");
+        const damageMaskInput = document.querySelector("[data-damage-mask]");
+        const damageContext = damageCanvas?.getContext("2d");
+        const damageForm = imageInput.closest("form");
+        const brushSize = document.getElementById("damage-brush-size");
+        let previewUrl = null;
+        let activeTool = "mark";
+        let isPainting = false;
+        let hasMarks = false;
+        let lastPoint = null;
+
         imageInput.addEventListener("change", () => {
           document.getElementById("file-name").textContent =
             imageInput.files.length ? imageInput.files[0].name : "No image selected";
+          if (!damageMarkup || !damageCanvas || !damagePreview || !damageContext) return;
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          damageContext.clearRect(0, 0, damageCanvas.width, damageCanvas.height);
+          damageMaskInput.value = "";
+          hasMarks = false;
+          damageMarkup.hidden = !imageInput.files.length;
+          if (imageInput.files.length) {
+            previewUrl = URL.createObjectURL(imageInput.files[0]);
+            damagePreview.src = previewUrl;
+          } else {
+            damagePreview.removeAttribute("src");
+          }
         });
+
+        if (damageCanvas && damageContext && damageForm && damageMaskInput) {
+          const getCanvasPoint = (event) => {
+            const bounds = damageCanvas.getBoundingClientRect();
+            return {
+              x: ((event.clientX - bounds.left) / bounds.width) * damageCanvas.width,
+              y: ((event.clientY - bounds.top) / bounds.height) * damageCanvas.height,
+            };
+          };
+          const paintTo = (point) => {
+            damageContext.save();
+            damageContext.globalCompositeOperation =
+              activeTool === "erase" ? "destination-out" : "source-over";
+            damageContext.strokeStyle = "rgba(255, 35, 35, 0.8)";
+            damageContext.lineWidth = Number(brushSize.value);
+            damageContext.lineCap = "round";
+            damageContext.lineJoin = "round";
+            damageContext.beginPath();
+            damageContext.moveTo(lastPoint.x, lastPoint.y);
+            damageContext.lineTo(point.x, point.y);
+            damageContext.stroke();
+            damageContext.restore();
+            lastPoint = point;
+            if (activeTool === "mark") hasMarks = true;
+          };
+
+          damageCanvas.addEventListener("pointerdown", (event) => {
+            if (!damagePreview.src) return;
+            isPainting = true;
+            lastPoint = getCanvasPoint(event);
+            damageCanvas.setPointerCapture(event.pointerId);
+            paintTo(lastPoint);
+            event.preventDefault();
+          });
+          damageCanvas.addEventListener("pointermove", (event) => {
+            if (isPainting) paintTo(getCanvasPoint(event));
+          });
+          const stopPainting = () => {
+            isPainting = false;
+            lastPoint = null;
+          };
+          damageCanvas.addEventListener("pointerup", stopPainting);
+          damageCanvas.addEventListener("pointercancel", stopPainting);
+
+          document.querySelectorAll("[data-damage-tool]").forEach((button) => {
+            button.addEventListener("click", () => {
+              activeTool = button.dataset.damageTool;
+              document.querySelectorAll("[data-damage-tool]").forEach((toolButton) => {
+                const selected = toolButton === button;
+                toolButton.classList.toggle("is-active", selected);
+                toolButton.setAttribute("aria-pressed", String(selected));
+              });
+            });
+          });
+          document.querySelector("[data-clear-damage]").addEventListener("click", () => {
+            damageContext.clearRect(0, 0, damageCanvas.width, damageCanvas.height);
+            damageMaskInput.value = "";
+            hasMarks = false;
+          });
+          brushSize.addEventListener("input", () => {
+            document.querySelector("[data-brush-size-value]").value = brushSize.value;
+          });
+          damageForm.addEventListener("submit", () => {
+            damageMaskInput.value = hasMarks ? damageCanvas.toDataURL("image/png") : "";
+          });
+        }
       }
 
       const wizard = document.getElementById("audit-wizard");

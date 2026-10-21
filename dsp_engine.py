@@ -299,8 +299,16 @@ def _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, l
         template_norm * np.sqrt(local_variance), 1e-6
     )
 
-    valid_mask = (M_mask > 0).astype(np.uint8)
-    integral_mask = cv2.integral(valid_mask)
+    donor_validation_mask = cv2.dilate(
+        local_comp_mask,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
+    ).astype(np.float32) / 255.0
+    source_damage = (M_mask[roi_y1:roi_y2, roi_x1:roi_x2] > 0).astype(
+        np.float32
+    )
+    contaminated_candidates = cv2.matchTemplate(
+        source_damage, donor_validation_mask, cv2.TM_CCORR
+    )
     score_y1 = max(0, y1 - 3 * search_y - roi_y1)
     score_x1 = max(0, x1 - 3 * search_x - roi_x1)
     score_y2 = min(scores.shape[0], y1 + 3 * search_y - roi_y1 + 1)
@@ -309,25 +317,27 @@ def _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, l
     if search_scores.size == 0:
         return None
 
-    candidate_indices = np.argsort(search_scores, axis=None)[::-1]
-    for candidate_index in candidate_indices:
-        local_y, local_x = np.unravel_index(candidate_index, search_scores.shape)
-        cy1 = roi_y1 + score_y1 + int(local_y)
-        cx1 = roi_x1 + score_x1 + int(local_x)
-        if cy1 == y1 and cx1 == x1:
-            continue
+    candidate_overlap = contaminated_candidates[
+        score_y1:score_y2, score_x1:score_x2
+    ]
+    valid_candidates = candidate_overlap < 0.5
+    target_y = y1 - roi_y1 - score_y1
+    target_x = x1 - roi_x1 - score_x1
+    if (
+        0 <= target_y < valid_candidates.shape[0]
+        and 0 <= target_x < valid_candidates.shape[1]
+    ):
+        valid_candidates[target_y, target_x] = False
+    if not np.any(valid_candidates):
+        return None
 
-        cy2, cx2 = cy1 + patch_h, cx1 + patch_w
-        masked_pixels = (
-                integral_mask[cy2, cx2]
-                - integral_mask[cy1, cx2]
-                - integral_mask[cy2, cx1]
-                + integral_mask[cy1, cx1]
-        )
-        if masked_pixels == 0:
-            return I_color[cy1:cy2, cx1:cx2]
-
-    return None
+    best_index = np.argmax(
+        np.where(valid_candidates, search_scores, -np.inf)
+    )
+    local_y, local_x = np.unravel_index(best_index, search_scores.shape)
+    cy1 = roi_y1 + score_y1 + int(local_y)
+    cx1 = roi_x1 + score_x1 + int(local_x)
+    return I_color[cy1:cy1 + patch_h, cx1:cx1 + patch_w]
 
 
 """ Lattice-Guided Fabric Reconstruction Engine."""

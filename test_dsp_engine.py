@@ -90,6 +90,55 @@ class TestTextileReconstruction(unittest.TestCase):
             ),
         )
 
+    def test_reconstructs_large_manually_marked_tear(self):
+        marked_fabric = self.clean_fabric.copy()
+        damage_mask = np.zeros(self.clean_fabric.shape[:2], dtype=np.uint8)
+        tear = np.array(
+            [
+                [105, 75],
+                [125, 66],
+                [143, 72],
+                [151, 91],
+                [143, 107],
+                [150, 123],
+                [132, 139],
+                [115, 127],
+                [101, 110],
+                [108, 94],
+            ],
+            dtype=np.int32,
+        )
+        cv2.fillPoly(marked_fabric, [tear], (165, 175, 183))
+        cv2.polylines(marked_fabric, [tear], True, (60, 65, 70), 3)
+        cv2.fillPoly(damage_mask, [tear], 255)
+        cv2.polylines(damage_mask, [tear], True, 255, 3)
+
+        _, a1, a2, _, symmetry_group = run_algorithm_i_autocorrelation(
+            cv2.cvtColor(marked_fabric, cv2.COLOR_BGR2GRAY)
+        )
+        reconstructed = run_algorithm_iii_template_alignment(
+            marked_fabric,
+            damage_mask,
+            a1,
+            a2,
+            symmetry_group=symmetry_group,
+        )
+
+        damaged_pixels = damage_mask > 0
+        before_error = np.mean(
+            np.abs(
+                marked_fabric.astype(np.float32)
+                - self.clean_fabric.astype(np.float32)
+            )[damaged_pixels]
+        )
+        after_error = np.mean(
+            np.abs(
+                reconstructed.astype(np.float32)
+                - self.clean_fabric.astype(np.float32)
+            )[damaged_pixels]
+        )
+        self.assertLess(after_error, before_error * 0.05)
+
     def test_wallpaper_evidence_matches_classifier_votes(self):
         gray = cv2.cvtColor(self.clean_fabric, cv2.COLOR_BGR2GRAY)
         legacy_result = run_algorithm_i_autocorrelation(gray)

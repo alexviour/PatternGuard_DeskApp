@@ -1,6 +1,7 @@
 import io
 import html
 import re
+import base64
 import unittest
 from unittest.mock import patch
 
@@ -28,6 +29,8 @@ class WebAppTests(unittest.TestCase):
         self.assertNotIn(b"STEP 1 OF 5", response.data)
         self.assertNotIn(b"temporary result files expire after 30 minutes", response.data)
         self.assertIn(b"Analyze textile", response.data)
+        self.assertIn(b"Mark damage the detector may miss", response.data)
+        self.assertIn(b'data-damage-tool="erase"', response.data)
         self.assertIn(b"Educational Textile Reference Guide", response.data)
         self.assertIn(b"Wallpaper group guide", response.data)
         self.assertIn(b"Capture guide", response.data)
@@ -245,6 +248,116 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn(b"Could not read that image", response.data)
 
+    def test_damage_mask_decode_uses_canvas_alpha(self):
+        pixels = np.zeros((256, 256, 4), dtype=np.uint8)
+        pixels[40:80, 90:130, :3] = (255, 35, 35)
+        pixels[40:80, 90:130, 3] = 204
+        buffer = io.BytesIO()
+        Image.fromarray(pixels).save(buffer, format="PNG")
+        data_url = "data:image/png;base64," + base64.b64encode(
+            buffer.getvalue()
+        ).decode("ascii")
+
+        decoded = webapp._read_damage_mask(data_url)
+
+        self.assertEqual(decoded.dtype, np.uint8)
+        self.assertEqual(decoded.shape, (256, 256))
+        self.assertTrue(np.all(decoded[40:80, 90:130] == 255))
+        self.assertEqual(np.count_nonzero(decoded), 40 * 40)
+
+    def test_damage_mask_rejects_wrong_dimensions(self):
+        buffer = io.BytesIO()
+        Image.new("RGBA", (128, 128)).save(buffer, format="PNG")
+        data_url = "data:image/png;base64," + base64.b64encode(
+            buffer.getvalue()
+        ).decode("ascii")
+
+        with self.assertRaisesRegex(ValueError, "256"):
+            webapp._read_damage_mask(data_url)
+
+    def test_user_marked_damage_is_added_to_detected_mask(self):
+        y, x = np.indices((256, 256))
+        pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
+        rgb_image = np.stack([pixels, pixels, pixels], axis=2)
+        manual_mask = np.zeros((256, 256), dtype=np.uint8)
+        manual_mask[80:120, 100:140] = 255
+        detected_mask = np.zeros_like(manual_mask)
+        detected_mask[20:30, 30:40] = 255
+        with patch.object(
+            webapp,
+            "run_algorithm_ii_defect_isolation",
+            return_value=(detected_mask, np.zeros((256, 256), dtype=np.float32)),
+        ):
+            with patch.object(
+                webapp,
+                "run_algorithm_iii_template_alignment",
+                return_value=rgb_image,
+            ) as reconstruction:
+                with patch.object(webapp, "_get_classifier") as get_classifier:
+                    get_classifier.return_value.predict.return_value = {
+                        "main_category": "Pinilian",
+                        "subclass": "Sinan Bayabas",
+                        "confidence": 96.0,
+                        "is_supported": True,
+                    }
+                    webapp._analyze_image(rgb_image, manual_mask)
+
+        np.testing.assert_array_equal(
+            reconstruction.call_args.args[1],
+            np.where((detected_mask > 0) | (manual_mask > 0), 255, 0),
+        )
+
+    def test_analyze_uses_uploaded_damage_mask(self):
+        y, x = np.indices((256, 256))
+        pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
+        rgb_image = np.stack([pixels, pixels, pixels], axis=2)
+        image_buffer = io.BytesIO()
+        Image.fromarray(rgb_image).save(image_buffer, format="PNG")
+        image_buffer.seek(0)
+
+        mask_pixels = np.zeros((256, 256, 4), dtype=np.uint8)
+        mask_pixels[80:120, 100:140, :3] = (255, 35, 35)
+        mask_pixels[80:120, 100:140, 3] = 204
+        mask_buffer = io.BytesIO()
+        Image.fromarray(mask_pixels).save(mask_buffer, format="PNG")
+        damage_mask = "data:image/png;base64," + base64.b64encode(
+            mask_buffer.getvalue()
+        ).decode("ascii")
+        with patch.object(
+            webapp,
+            "run_algorithm_ii_defect_isolation",
+            return_value=(
+                np.zeros((256, 256), dtype=np.uint8),
+                np.zeros((256, 256), dtype=np.float32),
+            ),
+        ):
+            with patch.object(
+                webapp,
+                "run_algorithm_iii_template_alignment",
+                return_value=np.zeros((256, 256, 3), dtype=np.uint8),
+            ) as reconstruction:
+                with patch.object(webapp, "_get_classifier") as get_classifier:
+                    get_classifier.return_value.predict.return_value = {
+                        "main_category": "Pinilian",
+                        "subclass": "Sinan Bayabas",
+                        "confidence": 96.0,
+                        "is_supported": True,
+                    }
+                    response = self.client.post(
+                        "/analyze",
+                        data={
+                            "image": (image_buffer, "textile.png"),
+                            "damage_mask": damage_mask,
+                        },
+                        content_type="multipart/form-data",
+                    )
+
+        self.assertEqual(response.status_code, 200, response.data.decode())
+        self.assertIn(b"1,600 added from your painted marks", response.data)
+        self.assertEqual(
+            np.count_nonzero(reconstruction.call_args.args[1]), 40 * 40
+        )
+
     def test_analysis_images_and_pdf_are_downloadable(self):
         y, x = np.indices((256, 256))
         pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
@@ -307,7 +420,7 @@ class WebAppTests(unittest.TestCase):
             b"operations-grid",
             b"CULTURAL &amp; WEAVING INTERPRETATION",
             b"Download Full PDF Report",
-            b"The detected mask defines repair regions.",
+            b"The automatically detected mask and any areas you painted define repair regions.",
             b"Download preliminary PDF report",
             b"Audit another textile",
             b"dark-pixel and local texture-deviation thresholds",

@@ -1,3 +1,5 @@
+import base64
+import binascii
 import io
 import logging
 import os
@@ -33,6 +35,8 @@ from reference_data import REFERENCE_ITEMS
 BASE_DIR = Path(__file__).resolve().parent
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_IMAGE_PIXELS = 20_000_000
+MAX_DAMAGE_MASK_DATA_LENGTH = 1_000_000
+ANALYSIS_SIZE = (256, 256)
 MAX_CACHED_RESULTS = 5
 RESULT_TTL_SECONDS = 30 * 60
 WALLPAPER_GROUP_EXPLANATIONS = {
@@ -191,8 +195,17 @@ def create_app():
             ), 400
 
         try:
+            manual_damage_mask = _read_damage_mask(
+                request.form.get("damage_mask", "")
+            )
+        except ValueError as exc:
+            return render_template(
+                "index.html", error=f"Could not read the damage marks: {exc}"
+            ), 400
+
+        try:
             with PROCESSING_LOCK:
-                result = _analyze_image(original_rgb)
+                result = _analyze_image(original_rgb, manual_damage_mask)
         except Exception as exc:
             app.logger.exception("PatternGuard image analysis failed")
             return render_template(
@@ -286,6 +299,33 @@ def _read_uploaded_image(stream):
         return np.asarray(ImageOps.exif_transpose(image).convert("RGB"))
 
 
+def _read_damage_mask(data_url):
+    if not data_url:
+        return None
+    if len(data_url) > MAX_DAMAGE_MASK_DATA_LENGTH:
+        raise ValueError("The marked area data is too large.")
+
+    prefix = "data:image/png;base64,"
+    if not data_url.startswith(prefix):
+        raise ValueError("Expected a PNG damage mask.")
+
+    try:
+        mask_bytes = base64.b64decode(data_url[len(prefix):], validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("The marked area data is invalid.") from exc
+
+    try:
+        with Image.open(io.BytesIO(mask_bytes)) as image:
+            if image.format != "PNG" or image.size != ANALYSIS_SIZE:
+                raise ValueError("The damage mask must be a 256 × 256 PNG.")
+            image.load()
+            alpha = np.asarray(image.convert("RGBA").getchannel("A"))
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError("The marked area image is invalid.") from exc
+
+    return np.where(alpha > 0, 255, 0).astype(np.uint8)
+
+
 def _get_classifier():
     global _classifier
     if _classifier is None:
@@ -330,7 +370,7 @@ def _render_detection_heatmap(diff_map, defect_mask):
     return heatmap
 
 
-def _analyze_image(original_rgb):
+def _analyze_image(original_rgb, manual_damage_mask=None):
     start_time = time.perf_counter()
     original_bgr = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2BGR)
     original_resized = cv2.resize(original_bgr, (256, 256))
@@ -354,6 +394,18 @@ def _analyze_image(original_rgb):
     defect_mask, diff_map = run_algorithm_ii_defect_isolation(
         original_resized, a1, a2
     )
+    automatic_pixel_count = int(np.count_nonzero(defect_mask == 255))
+    manually_added_pixel_count = 0
+    if manual_damage_mask is not None:
+        if manual_damage_mask.shape != defect_mask.shape:
+            raise ValueError("The damage mask dimensions do not match the analysis image.")
+        manual_damage_mask = np.where(
+            manual_damage_mask > 0, 255, 0
+        ).astype(np.uint8)
+        manually_added_pixel_count = int(
+            np.count_nonzero((manual_damage_mask == 255) & (defect_mask == 0))
+        )
+        defect_mask = cv2.bitwise_or(defect_mask, manual_damage_mask)
     detected_pixel_count = int(np.count_nonzero(defect_mask == 255))
     no_defect_detected = detected_pixel_count == 0
     restored_bgr = run_algorithm_iii_template_alignment(
@@ -546,16 +598,17 @@ def _analyze_image(original_rgb):
         "Possible defects are detected by combining dark-pixel thresholding "
         "with local texture-deviation thresholds. Reconstruction searches "
         "for matching clean patches aligned to the estimated lattice, with "
-        "an inpainting fallback when no matching patch is found.\n\n"
+        "an inpainting fallback when no matching patch is found. Optional "
+        "user-painted damage areas are added to the repair mask.\n\n"
         "Metric definitions: SSIM measures structural similarity in pixels "
-        "outside the detected mask; accuracy combines the fraction of masked "
+        "outside the repair mask; accuracy combines the fraction of masked "
         "pixels changed by reconstruction (60%) and the fraction of unmasked "
         "pixels preserved (40%); recall, false positive rate, and IoU compare "
-        "the detected mask with pixels changed by the reconstruction, not "
+        "the repair mask with pixels changed by the reconstruction, not "
         "with independently labeled ground-truth damage. SFS combines "
         "accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive "
         "rate (15%), and IoU (10%), with an additional penalty for changes "
-        "outside the detected mask.\n\n"
+        "outside the repair mask.\n\n"
         f"SSIM: {ssim_val:.2f}%\n"
         f"Symmetry Fidelity Score: {score_text}\n"
         f"Accuracy: {accuracy:.2f}%\n"
@@ -598,12 +651,12 @@ def _analyze_image(original_rgb):
                 "repair."
                 if no_defect_detected
                 else (
-                    f"{detected_pixel_count:,} pixels were marked by the "
-                    "combined dark-pixel and local texture-deviation "
-                    "thresholds. Red-tinted regions are marked as possible "
-                    "defects and outlined in yellow. The surrounding heatmap "
-                    "colors show relative texture differences, not a "
-                    "calibrated damage severity."
+                    f"{detected_pixel_count:,} pixels are in the repair mask: "
+                    f"{automatic_pixel_count:,} from automatic screening and "
+                    f"{manually_added_pixel_count:,} added from your painted "
+                    "marks. Red-tinted regions are highlighted in the heatmap; "
+                    "its other colors show relative texture differences, not "
+                    "a calibrated damage severity."
                 )
             ),
             "sfs": score_interpretation,

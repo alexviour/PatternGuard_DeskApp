@@ -959,6 +959,89 @@ h1 {
   color: #53463f;
 }
 
+.damage-markup {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.damage-markup h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+}
+
+.damage-markup > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.damage-markup-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.damage-markup-tools .button {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+}
+
+.damage-markup-tools .is-active {
+  border-color: var(--maroon);
+  background: var(--maroon);
+  color: #fff;
+}
+
+.damage-markup-tools label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.damage-markup-tools input[type="range"] {
+  width: min(180px, 35vw);
+  accent-color: var(--maroon);
+}
+
+.damage-markup-canvas {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #eee7df;
+  touch-action: none;
+}
+
+.damage-markup-canvas img,
+.damage-markup-canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.damage-markup-canvas img {
+  object-fit: fill;
+}
+
+.damage-markup-canvas canvas {
+  cursor: crosshair;
+}
+
+[hidden] {
+  display: none !important;
+}
+
 .symmetry-card {
   display: flex;
   align-items: center;
