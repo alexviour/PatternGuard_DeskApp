@@ -1,5 +1,58 @@
+import unittest
+
 import numpy as np
 from evaluation_metrics import calculate_restoration_metrics
+
+
+class TestIoUMaskThreshold(unittest.TestCase):
+    def setUp(self):
+        self.image = np.zeros((16, 16), dtype=np.uint8)
+        self.truth = np.zeros_like(self.image)
+        self.truth[4:8, 4:8] = 255
+
+    def test_default_threshold_ignores_faint_mask_noise(self):
+        predicted = self.truth.copy()
+        predicted[0, 0] = 1
+        predicted[0, 1] = 128
+
+        metrics = calculate_restoration_metrics(
+            self.image, self.image, self.truth, predicted
+        )
+
+        self.assertAlmostEqual(metrics[4], 16 / 17 * 100)
+
+    def test_custom_threshold_excludes_weak_gray_pixels(self):
+        predicted = self.truth.copy()
+        predicted[0, 0] = 128
+
+        metrics = calculate_restoration_metrics(
+            self.image, self.image, self.truth, predicted, mask_threshold=0.75
+        )
+
+        self.assertAlmostEqual(metrics[4], 100.0)
+
+    def test_probability_masks_use_zero_to_one_threshold_scale(self):
+        truth = (self.truth > 0).astype(np.float32)
+        predicted = truth.copy()
+        predicted[0, 0] = 0.4
+
+        metrics = calculate_restoration_metrics(
+            self.image, self.image, truth, predicted
+        )
+
+        self.assertAlmostEqual(metrics[4], 100.0)
+
+    def test_invalid_mask_threshold_raises(self):
+        with self.assertRaises(ValueError):
+            calculate_restoration_metrics(
+                self.image, self.image, self.truth, mask_threshold=1.1
+            )
+
+    def test_predicted_mask_shape_mismatch_raises(self):
+        with self.assertRaisesRegex(ValueError, "M_predicted"):
+            calculate_restoration_metrics(
+                self.image, self.image, self.truth, np.zeros((8, 8), dtype=np.uint8)
+            )
 
 
 def run_sanity_tests():
@@ -38,4 +91,3 @@ def run_sanity_tests():
 
 if __name__ == '__main__':
     run_sanity_tests()
-

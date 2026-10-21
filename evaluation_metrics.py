@@ -11,24 +11,37 @@ def _normalize_image(arr, name):
         raise ValueError(f"{name} must be a 2D grayscale image, got shape {np.asarray(arr).shape}")
     return a.astype(np.float32)
 
-def _normalize_mask(arr, name):
+def _normalize_mask(arr, name, threshold):
     a = np.asarray(arr)
+    if a.ndim not in (2, 3):
+        raise ValueError(
+            f"{name} must be a 2D mask or 3D color mask, got shape {a.shape}"
+        )
+    mask_scale = 255.0 if a.size and float(np.max(a)) > 1.0 else 1.0
+    threshold_value = threshold * mask_scale
     if a.ndim == 3:
-        a = np.any(a > 0, axis=2)
-    if a.ndim != 2:
-        raise ValueError(f"{name} must be a 2D mask, got shape {np.asarray(arr).shape}")
-    return (a > 0).astype(np.uint8)
+        a = np.any(a > threshold_value, axis=2)
+    else:
+        a = a > threshold_value
+    return a.astype(np.uint8)
 
 def calculate_restoration_metrics(
         I_original_gray: np.ndarray,
         I_reconstructed_gray: np.ndarray,
         M_mask: np.ndarray,
         M_predicted: Optional[np.ndarray] = None,
-        change_threshold: float = 12.0) -> Tuple[float, float, float, float, float, float]:
+        change_threshold: float = 12.0,
+        mask_threshold: float = 0.5) -> Tuple[float, float, float, float, float, float]:
     """
     Computes SSIM, restoration accuracy, and defect metrics:
     (ssim_value, accuracy_value, recall_value, fpr_value, iou_value, sfs_score)
+
+    Mask values are binarized when they exceed ``mask_threshold``. The
+    threshold is relative to a 0-1 mask, or scaled to 0-255 for byte masks.
     """
+    if not np.isfinite(mask_threshold) or not 0.0 <= mask_threshold <= 1.0:
+        raise ValueError("mask_threshold must be a finite value between 0 and 1")
+
     try:
         if I_original_gray is None or I_reconstructed_gray is None or M_mask is None:
             raise ValueError("One or more input arrays are None")
@@ -38,7 +51,7 @@ def calculate_restoration_metrics(
         if I_orig.shape != I_recon.shape:
             raise ValueError(f"Shape mismatch: Original {I_orig.shape} vs Reconstructed {I_recon.shape}")
 
-        M_defect = _normalize_mask(M_mask, "M_mask")
+        M_defect = _normalize_mask(M_mask, "M_mask", mask_threshold)
         if M_defect.shape != I_orig.shape:
             raise ValueError(f"Shape mismatch: M_mask {M_defect.shape} vs image {I_orig.shape}")
 
@@ -46,7 +59,11 @@ def calculate_restoration_metrics(
             pixel_diff_full = np.abs(I_orig - I_recon)
             M_pred = (pixel_diff_full > change_threshold).astype(np.uint8)
         else:
-            M_pred = _normalize_mask(M_predicted, "M_predicted")
+            M_pred = _normalize_mask(M_predicted, "M_predicted", mask_threshold)
+            if M_pred.shape != I_orig.shape:
+                raise ValueError(
+                    f"Shape mismatch: M_predicted {M_pred.shape} vs image {I_orig.shape}"
+                )
 
         # 1. SSIM Evaluation on clean regions
         mask_clean = (M_defect == 0)
@@ -118,6 +135,8 @@ def calculate_restoration_metrics(
             float(np.clip(iou_value, 0.0, 100.0)),
             sfs_score,
         )
+    except ValueError:
+        raise
     except Exception as exc:
         print(f"[calculate_restoration_metrics] error: {exc}")
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
