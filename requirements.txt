@@ -7,3 +7,5 @@ scikit-image>=0.21.0
 torch>=2.0.0
 torchvision>=0.15.0
 fpdf>=1.7.2
+Flask>=3.0.0
+gunicorn>=22.0.0,<24.0.0

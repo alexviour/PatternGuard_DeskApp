@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#392019">
+    <title>{{ item.title }} | PatternGuard Textile Guide</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('index') }}">
+        <span class="brand-mark" aria-hidden="true">PG</span>
+        <span>PatternGuard</span>
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="{{ url_for('index') }}#upload">Audit</a>
+        <a href="{{ url_for('index') }}#reference-guide">Reference guide</a>
+        <a href="{{ url_for('about') }}">About us</a>
+      </nav>
+    </header>
+
+    <main class="page-shell reference-detail-shell">
+      <a class="back-link" href="{{ url_for('index') }}#reference-guide">← Back to textile guide</a>
+      <section class="reference-detail" aria-labelledby="reference-detail-title">
+        <div class="reference-detail-copy">
+          <p class="eyebrow">TEXTILE FIELD GUIDE</p>
+          <h1 id="reference-detail-title">{{ item.title }}</h1>
+          <p class="reference-english-name">{{ item.english_name }}</p>
+          <p>{{ item.description }}</p>
+          {% if item.commonly_used_by is defined %}
+            <p class="reference-common-use"><strong>Commonly used by/in:</strong> {{ item.commonly_used_by }}</p>
+          {% endif %}
+          {% if item.source_url is defined %}
+            <p class="reference-source">Source: <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">Bahay Ugnayan</a></p>
+          {% endif %}
+        </div>
+        <div
+          class="sample-carousel"
+          id="sample-carousel"
+          data-sample-index="{{ sample_index }}"
+          aria-label="{{ item.title }} image viewer"
+        >
+          <div class="sample-carousel-stage">
+            {% if item.sample_paths|length > 1 %}
+              <a class="carousel-arrow carousel-previous" href="{{ url_for('reference_detail', slug=item.slug, sample=previous_index) }}" aria-label="Previous textile image">‹</a>
+            {% endif %}
+            <img
+              class="carousel-image"
+              src="{{ url_for('reference_sample', slug=item.slug, filename=sample.name) }}"
+              alt="{{ item.title }} textile sample {{ sample_index + 1 }}"
+              draggable="false"
+            >
+            {% if item.sample_paths|length > 1 %}
+              <a class="carousel-arrow carousel-next" href="{{ url_for('reference_detail', slug=item.slug, sample=next_index) }}" aria-label="Next textile image">›</a>
+            {% endif %}
+          </div>
+          <div class="carousel-caption">
+            <span class="carousel-filename">{{ sample.name }}</span>
+            <span class="carousel-count">{{ sample_index + 1 }} / {{ item.sample_paths|length }}</span>
+          </div>
+          <p class="swipe-hint">Use the arrows or swipe to browse all of the images.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>PatternGuard</span>
+      <span>Automated textile auditing &amp; restoration framework</span>
+    </footer>
+    <script>
+      const carousel = document.getElementById("sample-carousel");
+      const image = carousel.querySelector(".carousel-image");
+      const filename = carousel.querySelector(".carousel-filename");
+      const count = carousel.querySelector(".carousel-count");
+      const sampleUrls = {{ sample_urls|tojson }};
+      const sampleNames = {{ item.sample_paths|map(attribute='name')|list|tojson }};
+      let currentIndex = Number(carousel.dataset.sampleIndex);
+      let touchStartX = null;
+
+      function showSample(index) {
+        currentIndex = (index + sampleUrls.length) % sampleUrls.length;
+        image.src = sampleUrls[currentIndex];
+        image.alt = "{{ item.title|e }} textile sample " + (currentIndex + 1);
+        filename.textContent = sampleNames[currentIndex];
+        count.textContent = (currentIndex + 1) + " / " + sampleUrls.length;
+        carousel.dataset.sampleIndex = currentIndex;
+        carousel.querySelector(".carousel-previous").href =
+          "?sample=" + ((currentIndex - 1 + sampleUrls.length) % sampleUrls.length);
+        carousel.querySelector(".carousel-next").href =
+          "?sample=" + ((currentIndex + 1) % sampleUrls.length);
+      }
+
+      carousel.querySelectorAll(".carousel-arrow").forEach((arrow) => {
+        arrow.addEventListener("click", (event) => {
+          event.preventDefault();
+          showSample(currentIndex + (arrow.classList.contains("carousel-next") ? 1 : -1));
+        });
+      });
+
+      carousel.addEventListener("touchstart", (event) => {
+        touchStartX = event.changedTouches[0].screenX;
+      }, {passive: true});
+      carousel.addEventListener("touchend", (event) => {
+        if (touchStartX === null) return;
+        const distance = event.changedTouches[0].screenX - touchStartX;
+        if (Math.abs(distance) > 45) showSample(currentIndex + (distance < 0 ? 1 : -1));
+        touchStartX = null;
+      }, {passive: true});
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight") showSample(currentIndex + 1);
+        if (event.key === "ArrowLeft") showSample(currentIndex - 1);
+      });
+    </script>
+  </body>
+</html>
