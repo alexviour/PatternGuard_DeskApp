@@ -1,0 +1,37 @@
+textile,source_image,damage,algorithm,image_size,a1,a2,damaged_pixels,warmup_runs,timed_runs,mae,psnr_db,median_restore_ms
+binakol_concha_concha,concha_concha_01.png,disk,DSP template alignment,256x256,34.0,48.0,1257,2,21,16.985945,21.187337,8.063800
+binakol_concha_concha,concha_concha_01.png,disk,Telea,256x256,34.0,48.0,1257,2,21,23.652612,18.287475,2.940800
+binakol_concha_concha,concha_concha_01.png,disk,Navier-Stokes,256x256,34.0,48.0,1257,2,21,22.965261,18.479968,2.632900
+binakol_concha_concha,concha_concha_01.png,scratch,DSP template alignment,256x256,35.0,48.0,868,2,21,14.693932,21.430038,9.565100
+binakol_concha_concha,concha_concha_01.png,scratch,Telea,256x256,35.0,48.0,868,2,21,17.034946,20.893426,2.183800
+binakol_concha_concha,concha_concha_01.png,scratch,Navier-Stokes,256x256,35.0,48.0,868,2,21,17.245392,20.703012,1.862400
+binakol_concha_concha,concha_concha_01.png,tear,DSP template alignment,256x256,35.0,48.0,2818,2,21,23.007334,18.721974,8.680200
+binakol_concha_concha,concha_concha_01.png,tear,Telea,256x256,35.0,48.0,2818,2,21,28.476579,17.174608,5.429500
+binakol_concha_concha,concha_concha_01.png,tear,Navier-Stokes,256x256,35.0,48.0,2818,2,21,27.508162,17.417218,5.200100
+binakol_kusikus,kusikus_01.png,disk,DSP template alignment,256x256,48.0,75.0,1257,2,21,15.717582,21.796379,8.705400
+binakol_kusikus,kusikus_01.png,disk,Telea,256x256,48.0,75.0,1257,2,21,28.926810,16.381653,2.799200
+binakol_kusikus,kusikus_01.png,disk,Navier-Stokes,256x256,48.0,75.0,1257,2,21,29.448687,16.272372,2.488100
+binakol_kusikus,kusikus_01.png,scratch,DSP template alignment,256x256,48.0,75.0,868,2,21,19.804531,19.939220,10.347400
+binakol_kusikus,kusikus_01.png,scratch,Telea,256x256,48.0,75.0,868,2,21,30.750768,16.040537,2.295700
+binakol_kusikus,kusikus_01.png,scratch,Navier-Stokes,256x256,48.0,75.0,868,2,21,31.503456,15.826247,2.470500
+binakol_kusikus,kusikus_01.png,tear,DSP template alignment,256x256,26.0,48.0,2818,2,21,18.058197,20.492308,9.147000
+binakol_kusikus,kusikus_01.png,tear,Telea,256x256,26.0,48.0,2818,2,21,32.145848,15.791229,5.326300
+binakol_kusikus,kusikus_01.png,tear,Navier-Stokes,256x256,26.0,48.0,2818,2,21,32.111308,15.830152,5.110800
+pinilian_sinan_agatul,sinan_agatul_01.png,disk,DSP template alignment,256x256,102.0,48.0,1257,2,21,18.017237,20.843019,8.262600
+pinilian_sinan_agatul,sinan_agatul_01.png,disk,Telea,256x256,102.0,48.0,1257,2,21,42.914877,13.991318,2.694600
+pinilian_sinan_agatul,sinan_agatul_01.png,disk,Navier-Stokes,256x256,102.0,48.0,1257,2,21,41.472819,14.302725,2.424700
+pinilian_sinan_agatul,sinan_agatul_01.png,scratch,DSP template alignment,256x256,102.0,48.0,868,2,21,46.341398,12.601039,9.459500
+pinilian_sinan_agatul,sinan_agatul_01.png,scratch,Telea,256x256,102.0,48.0,868,2,21,25.127496,17.321955,2.215100
+pinilian_sinan_agatul,sinan_agatul_01.png,scratch,Navier-Stokes,256x256,102.0,48.0,868,2,21,25.101382,17.233676,1.977700
+pinilian_sinan_agatul,sinan_agatul_01.png,tear,DSP template alignment,256x256,24.0,48.0,2818,2,21,29.702508,15.894285,8.870200
+pinilian_sinan_agatul,sinan_agatul_01.png,tear,Telea,256x256,24.0,48.0,2818,2,21,32.278330,15.580760,5.451700
+pinilian_sinan_agatul,sinan_agatul_01.png,tear,Navier-Stokes,256x256,24.0,48.0,2818,2,21,34.394251,14.931266,5.266200
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,disk,DSP template alignment,256x256,36.0,48.0,1257,2,21,10.587908,24.685141,7.379400
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,disk,Telea,256x256,36.0,48.0,1257,2,21,18.279236,19.199995,2.712100
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,disk,Navier-Stokes,256x256,36.0,48.0,1257,2,21,19.515248,18.727182,2.470400
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,scratch,DSP template alignment,256x256,36.0,48.0,868,2,21,7.296467,27.291992,9.538000
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,scratch,Telea,256x256,36.0,48.0,868,2,21,15.316052,20.139683,2.235000
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,scratch,Navier-Stokes,256x256,36.0,48.0,868,2,21,15.458909,19.712336,1.924600
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,tear,DSP template alignment,256x256,36.0,48.0,2818,2,21,19.498817,18.065830,8.411500
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,tear,Telea,256x256,36.0,48.0,2818,2,21,19.589898,19.073230,5.153800
+pinilian_sinan_kabalyo,sinan_kabalyo_01.png,tear,Navier-Stokes,256x256,36.0,48.0,2818,2,21,21.500473,18.111198,5.247500

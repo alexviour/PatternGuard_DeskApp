@@ -30,6 +30,22 @@ automatic screening may miss; marked areas are added to the reconstruction
 mask. Repairs are estimates from repeated patterns and cannot guarantee recovery
 of the original weave.
 
+## Benchmark textile restoration algorithms
+
+Run the reproducible benchmark from the repository root:
+
+```powershell
+python benchmark_restoration.py
+```
+
+The script compares DSP template alignment, Telea inpainting, and
+Navier–Stokes inpainting on four dataset textiles with disk, scratch, and tear
+masks. It prints masked-pixel MAE and PSNR plus median restoration time, and
+writes per-case measurements to `restoration_benchmark_results.csv`. All
+algorithms receive the same known synthetic damage mask, so this benchmark
+measures restoration quality rather than damage-detection accuracy. Timing
+excludes image loading, damage generation, and DSP repeat-spacing estimation.
+
 ## Deploying a free evaluation copy to Render
 
 The repository includes a Render Blueprint in `render.yaml`. To deploy:

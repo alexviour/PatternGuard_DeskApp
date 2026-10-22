@@ -535,9 +535,18 @@ body {
 }
 
 .intro {
-  max-width: 690px;
   margin: 0 auto 34px;
+  padding: clamp(20px, 4vw, 30px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
   text-align: center;
+}
+
+.intro h1 {
+  max-width: 620px;
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .eyebrow {
@@ -1106,6 +1115,18 @@ h1 {
 
 .results-heading {
   margin-bottom: 22px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.results-section {
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--soft);
+  box-shadow: 0 14px 38px rgb(57 32 25 / 5%);
 }
 
 .results-heading h2 {
@@ -1194,6 +1215,10 @@ h1 {
 
 .guide-heading {
   margin-bottom: 18px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
 }
 
 .guide-heading h2 {
@@ -1653,7 +1678,7 @@ h1 {
 }
 
 .wizard-step.upload-card {
-  max-width: 690px;
+  max-width: none;
 }
 
 .wizard-progress {
@@ -1838,6 +1863,10 @@ h1 {
 
 .wizard-title {
   margin: 28px 0 18px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
 }
 
 .wizard-title h3 {

@@ -45,7 +45,7 @@
     <main class="page-shell">
       <section class="intro">
         <p class="eyebrow">TEXTILE, MADE ACCESSIBLE</p>
-        <h1>Understand Filipino Woven Textiles</h1>
+        <h1>Understand and restore Filipino woven patterns.</h1>
         <p class="intro-copy">
           Upload a Pinilian or Binakol textile image to identify its pattern,
           inspect possible damage, and create a reconstruction report.
@@ -58,13 +58,6 @@
 
       <section class="wizard" id="audit-wizard" data-current-step="1" aria-label="Textile audit">
         {% if not result %}
-          <ol class="wizard-progress" aria-label="Audit stages">
-            <li data-progress-step="1" aria-current="step"><span class="stage-number">1</span><span>Audit &amp; Input</span></li>
-            <li data-progress-step="2" aria-disabled="true"><span class="stage-number">2</span><span>Interpretable Results</span></li>
-            <li data-progress-step="3" aria-disabled="true"><span class="stage-number">3</span><span>Restored Image</span></li>
-            <li data-progress-step="4" aria-disabled="true"><span class="stage-number">4</span><span>Classification &amp; Context</span></li>
-            <li data-progress-step="5" aria-disabled="true"><span class="stage-number">5</span><span>Final Audit Metrics</span></li>
-          </ol>
           <section class="wizard-step upload-card" id="upload" data-step-panel="1" aria-labelledby="upload-title">
             <div class="section-heading">
               <span class="step-number">01</span>
@@ -295,7 +288,6 @@
                   <p class="eyebrow">REPEATING-PATTERN SYMMETRY · WALLPAPER GROUP CLASSIFICATION</p>
                   <h3 id="symmetry-title"><span class="status-badge">Planar group detected: {{ result.metrics.wallpaper_group }}</span></h3>
                   <p>{{ result.interpretation.wallpaper_group }}</p>
-                  <p>Rule-based assignment from local symmetry votes; the classifier does not produce a calibrated confidence percentage.</p>
                   <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
                 </div>
                 <dl class="lattice-values">
