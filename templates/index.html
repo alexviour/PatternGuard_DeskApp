@@ -102,7 +102,10 @@
                 <p class="eyebrow">AUDIT COMPLETE</p>
                 <h2 id="results-title">Textile Analysis</h2>
               </div>
-              <a class="button button-secondary" href="{{ url_for('index') }}">Analyze another image</a>
+              <div class="results-heading-actions">
+                <button class="button button-secondary" type="button" data-open-operations>View Operations Matrix</button>
+                <a class="button button-secondary" href="{{ url_for('index') }}">Analyze another image</a>
+              </div>
             </div>
 
             {% if result.warning %}
@@ -119,6 +122,23 @@
               <li data-progress-step="4"><button type="button" data-go-step="4"><span>4</span><span>Classification &amp; Context</span></button></li>
               <li data-progress-step="5"><button type="button" data-go-step="5"><span>5</span><span>Final Audit Metrics</span></button></li>
             </ol>
+
+            <dialog class="operations-dialog" data-operations-dialog aria-labelledby="operations-title">
+              <div class="dialog-heading">
+                <div>
+                  <p class="eyebrow">SYMMETRY OPERATION COMPARISON</p>
+                  <h3 id="operations-title">Operations matrix</h3>
+                </div>
+                <button class="dialog-close" type="button" data-close-operations aria-label="Close operations matrix">×</button>
+              </div>
+              <p>These canvases use the full normalized image I(x,y), not an extracted fundamental unit cell. |I − Tₕ(I)| highlights mismatch under a direct horizontal flip; the classifier instead evaluates best-offset NCC over local tiles, as shown in the decision trace.</p>
+              <div class="operations-grid">
+                <figure><canvas data-operation-canvas="original" width="256" height="256"></canvas><figcaption>I(x,y) · normalized image</figcaption></figure>
+                <figure><canvas data-operation-canvas="horizontal" width="256" height="256"></canvas><figcaption>Tₕ(I) · horizontal flip</figcaption></figure>
+                <figure><canvas data-operation-canvas="vertical" width="256" height="256"></canvas><figcaption>Tᵥ(I) · vertical flip</figcaption></figure>
+                <figure><canvas data-operation-canvas="difference" width="256" height="256"></canvas><figcaption>|I − Tₕ(I)| · pixel difference</figcaption></figure>
+              </div>
+            </dialog>
 
             <section class="wizard-step" id="upload" data-step-panel="1" aria-labelledby="step-1-title">
               <div class="stage-one-grid">
@@ -211,6 +231,30 @@
                   >
                 </div>
                 <p class="comparison-help">Drag the circular ↔ handle or use the arrow keys. Move the pointer over the reconstructed side to inspect its texture with the 2× magnifier.</p>
+              </section>
+              <section class="damage-markup restoration-markup" aria-labelledby="restoration-markup-title">
+                <h3 id="restoration-markup-title">Did the system miss any damage or leave an area unrepaired?</h3>
+                <p>Paint over missed tears, holes, or poorly restored areas on the reconstructed image below, then submit the marks to run restoration again. Mark the full area that needs repair. The next result is an estimate from nearby repeating patterns, not a guaranteed recovery of the original weave.</p>
+                <form action="{{ url_for('restore_marked_damage', result_id=result_id) }}" method="post" data-result-damage-form>
+                  <div class="damage-markup-tools">
+                    <button class="button button-secondary is-active" type="button" data-result-damage-tool="mark" aria-pressed="true">Mark damage</button>
+                    <button class="button button-secondary" type="button" data-result-damage-tool="erase" aria-pressed="false">Erase</button>
+                    <label for="result-damage-brush-size">Brush <output data-result-brush-size-value>12</output> px</label>
+                    <input id="result-damage-brush-size" type="range" min="3" max="36" value="12" aria-label="Restoration marking brush size">
+                    <button class="button button-secondary" type="button" data-result-clear-damage>Clear marks</button>
+                  </div>
+                  <div class="damage-markup-canvas result-damage-canvas">
+                    <img
+                      src="{{ url_for('result_image', result_id=result_id, name='restored') }}"
+                      alt="Restored textile image to mark missed or poorly repaired areas"
+                      draggable="false"
+                    >
+                    <canvas data-result-damage-canvas width="256" height="256" aria-label="Paint over missed damage to include it in another restoration"></canvas>
+                  </div>
+                  <input type="hidden" name="damage_mask" data-result-damage-mask>
+                  <button class="button button-primary" type="submit">Restore marked areas</button>
+                  <p class="damage-mark-status" data-result-mark-status aria-live="polite"></p>
+                </form>
               </section>
               <section class="interpretation-card">
                 <p class="eyebrow">SYMMETRY-GUIDED RECONSTRUCTION</p>
@@ -329,22 +373,6 @@
                 </ol>
                 <p class="matrix-caveat"><strong>Reading the difference map:</strong> |I − Tₕ(I)| shows pixel mismatch under a whole-image horizontal flip. Low difference is visual evidence of alignment, but does not by itself establish the group: classification uses best-offset NCC on local tiles and the vote rule above.</p>
               </section>
-              <dialog class="operations-dialog" data-operations-dialog aria-labelledby="operations-title">
-                <div class="dialog-heading">
-                  <div>
-                    <p class="eyebrow">SYMMETRY OPERATION COMPARISON</p>
-                    <h3 id="operations-title">Operations matrix</h3>
-                  </div>
-                  <button class="dialog-close" type="button" data-close-operations aria-label="Close operations matrix">×</button>
-                </div>
-                <p>These canvases use the full normalized image I(x,y), not an extracted fundamental unit cell. |I − Tₕ(I)| highlights mismatch under a direct horizontal flip; the classifier instead evaluates best-offset NCC over local tiles, as shown in the decision trace.</p>
-                <div class="operations-grid">
-                  <figure><canvas data-operation-canvas="original" width="256" height="256"></canvas><figcaption>I(x,y) · normalized image</figcaption></figure>
-                  <figure><canvas data-operation-canvas="horizontal" width="256" height="256"></canvas><figcaption>Tₕ(I) · horizontal flip</figcaption></figure>
-                  <figure><canvas data-operation-canvas="vertical" width="256" height="256"></canvas><figcaption>Tᵥ(I) · vertical flip</figcaption></figure>
-                  <figure><canvas data-operation-canvas="difference" width="256" height="256"></canvas><figcaption>|I − Tₕ(I)| · pixel difference</figcaption></figure>
-                </div>
-              </dialog>
               <section class="culture-card" aria-labelledby="culture-title">
                 <p class="eyebrow">CULTURAL &amp; WEAVING INTERPRETATION</p>
                 <h3 id="culture-title">{{ result.classification.text }}</h3>
@@ -546,6 +574,118 @@
         }
       }
 
+      const resultDamageCanvas = document.querySelector("[data-result-damage-canvas]");
+      if (resultDamageCanvas) {
+        const resultDamageContext = resultDamageCanvas.getContext("2d");
+        const resultDamageForm = resultDamageCanvas.closest("form");
+        const resultDamageMask = resultDamageForm.querySelector("[data-result-damage-mask]");
+        const resultBrushSize = document.getElementById("result-damage-brush-size");
+        const resultMarkStatus = resultDamageForm.querySelector("[data-result-mark-status]");
+        let resultActiveTool = "mark";
+        let resultIsPainting = false;
+        let resultLastPoint = null;
+
+        const resultCanvasPoint = (event) => {
+          const bounds = resultDamageCanvas.getBoundingClientRect();
+          return {
+            x: ((event.clientX - bounds.left) / bounds.width) * resultDamageCanvas.width,
+            y: ((event.clientY - bounds.top) / bounds.height) * resultDamageCanvas.height,
+          };
+        };
+        const paintResultDamage = (point) => {
+          resultDamageContext.save();
+          resultDamageContext.globalCompositeOperation =
+            resultActiveTool === "erase" ? "destination-out" : "source-over";
+          resultDamageContext.strokeStyle = "rgba(255, 35, 35, 0.8)";
+          resultDamageContext.fillStyle = "rgba(255, 35, 35, 0.8)";
+          resultDamageContext.lineWidth = Number(resultBrushSize.value);
+          resultDamageContext.lineCap = "round";
+          resultDamageContext.lineJoin = "round";
+          resultDamageContext.beginPath();
+          resultDamageContext.arc(
+            point.x,
+            point.y,
+            Number(resultBrushSize.value) / 2,
+            0,
+            Math.PI * 2
+          );
+          resultDamageContext.fill();
+          if (resultLastPoint) {
+            resultDamageContext.beginPath();
+            resultDamageContext.moveTo(resultLastPoint.x, resultLastPoint.y);
+            resultDamageContext.lineTo(point.x, point.y);
+            resultDamageContext.stroke();
+          }
+          resultDamageContext.restore();
+          resultLastPoint = point;
+        };
+
+        resultDamageCanvas.addEventListener("pointerdown", (event) => {
+          resultIsPainting = true;
+          resultLastPoint = null;
+          resultDamageCanvas.setPointerCapture(event.pointerId);
+          paintResultDamage(resultCanvasPoint(event));
+          resultMarkStatus.textContent = "";
+          event.preventDefault();
+        });
+        resultDamageCanvas.addEventListener("pointermove", (event) => {
+          if (resultIsPainting) paintResultDamage(resultCanvasPoint(event));
+        });
+        const stopResultPainting = () => {
+          resultIsPainting = false;
+          resultLastPoint = null;
+        };
+        resultDamageCanvas.addEventListener("pointerup", stopResultPainting);
+        resultDamageCanvas.addEventListener("pointercancel", stopResultPainting);
+
+        resultDamageForm.querySelectorAll("[data-result-damage-tool]").forEach((button) => {
+          button.addEventListener("click", () => {
+            resultActiveTool = button.dataset.resultDamageTool;
+            resultDamageForm.querySelectorAll("[data-result-damage-tool]").forEach((toolButton) => {
+              const selected = toolButton === button;
+              toolButton.classList.toggle("is-active", selected);
+              toolButton.setAttribute("aria-pressed", String(selected));
+            });
+          });
+        });
+        resultDamageForm.querySelector("[data-result-clear-damage]").addEventListener("click", () => {
+          resultDamageContext.clearRect(
+            0,
+            0,
+            resultDamageCanvas.width,
+            resultDamageCanvas.height
+          );
+          resultDamageMask.value = "";
+          resultMarkStatus.textContent = "Marks cleared.";
+        });
+        resultBrushSize.addEventListener("input", () => {
+          resultDamageForm.querySelector("[data-result-brush-size-value]").value =
+            resultBrushSize.value;
+        });
+        resultDamageForm.addEventListener("submit", (event) => {
+          const pixels = resultDamageContext.getImageData(
+            0,
+            0,
+            resultDamageCanvas.width,
+            resultDamageCanvas.height
+          ).data;
+          let hasMarks = false;
+          for (let alpha = 3; alpha < pixels.length; alpha += 4) {
+            if (pixels[alpha] > 0) {
+              hasMarks = true;
+              break;
+            }
+          }
+          if (!hasMarks) {
+            event.preventDefault();
+            resultMarkStatus.textContent =
+              "Mark the missed damage on the image before restoring.";
+            return;
+          }
+          resultDamageMask.value = resultDamageCanvas.toDataURL("image/png");
+        });
+      }
+
       const wizard = document.getElementById("audit-wizard");
       if (wizard) {
         const panels = Array.from(wizard.querySelectorAll("[data-step-panel]"));
@@ -651,16 +791,18 @@
         });
 
         const operationsDialog = wizard.querySelector("[data-operations-dialog]");
-        const openOperations = wizard.querySelector("[data-open-operations]");
-        if (operationsDialog && openOperations) {
-          openOperations.addEventListener("click", () => {
-            operationsDialog.showModal();
-            const source = wizard.querySelector(".annotated-pattern img");
-            if (!source.complete || !source.naturalWidth) {
-              source.addEventListener("load", () => renderOperations(source), { once: true });
-            } else {
-              renderOperations(source);
-            }
+        const openOperationsButtons = wizard.querySelectorAll("[data-open-operations]");
+        if (operationsDialog && openOperationsButtons.length) {
+          openOperationsButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              operationsDialog.showModal();
+              const source = wizard.querySelector(".annotated-pattern img");
+              if (!source.complete || !source.naturalWidth) {
+                source.addEventListener("load", () => renderOperations(source), { once: true });
+              } else {
+                renderOperations(source);
+              }
+            });
           });
           operationsDialog.querySelector("[data-close-operations]").addEventListener("click", () => {
             operationsDialog.close();

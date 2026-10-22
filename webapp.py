@@ -220,6 +220,48 @@ def create_app():
             result_id=result_id,
         )
 
+    @app.post("/results/<result_id>/restore")
+    def restore_marked_damage(result_id):
+        cached_result = _get_cached_result(result_id)
+        if cached_result is None:
+            abort(404)
+
+        try:
+            manual_damage_mask = _read_damage_mask(
+                request.form.get("damage_mask", "")
+            )
+            if manual_damage_mask is None or not np.any(manual_damage_mask):
+                raise ValueError("Paint over the missed damage before restoring.")
+            restored_rgb = _read_uploaded_image(
+                io.BytesIO(cached_result["images"]["restored"])
+            )
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            return render_template(
+                "index.html",
+                result=cached_result,
+                result_id=result_id,
+                error=f"Could not restore the marked areas: {exc}",
+            ), 400
+
+        try:
+            with PROCESSING_LOCK:
+                result = _analyze_image(restored_rgb, manual_damage_mask)
+        except Exception as exc:
+            app.logger.exception("PatternGuard marked-area restoration failed")
+            return render_template(
+                "index.html",
+                result=cached_result,
+                result_id=result_id,
+                error=f"Marked-area restoration failed: {exc}",
+            ), 500
+
+        updated_result_id = _cache_result(result)
+        return render_template(
+            "index.html",
+            result=result,
+            result_id=updated_result_id,
+        )
+
     @app.get("/results/<result_id>/images/<name>")
     def result_image(result_id, name):
         if name not in {"original", "heatmap", "restored"}:

@@ -1,0 +1,43 @@
+{
+  "source_image": "dataset\\pinilian_sinan_bituwon\\sinan_bituwon_01.png",
+  "source_size_width_height": [
+    356,
+    200
+  ],
+  "processing_size_width_height": [
+    256,
+    256
+  ],
+  "demonstration_damage": {
+    "type": "synthetic black disk",
+    "center_xy": [
+      128,
+      126
+    ],
+    "radius_pixels": 13
+  },
+  "autocorrelation": {
+    "a1_pixels": 48.0,
+    "a2_pixels": 37.0,
+    "dominant_angle_degrees": 52.37376636133021,
+    "wallpaper_group": "pmm",
+    "decision_path": "Non-square lattice; 180-degree rotation and both horizontal and vertical mirror votes passed."
+  },
+  "defect_isolation": {
+    "detected_pixels": 1333,
+    "percent_of_image": 2.03399658203125
+  },
+  "restoration": {
+    "changed_pixels": 1584,
+    "changed_pixel_percent": 2.4169921875
+  },
+  "figures": [
+    "dsp_pipeline_stages.png",
+    "dsp_before_after.png"
+  ],
+  "limitations": [
+    "The synthetic black disk demonstrates the algorithm and is not natural damage.",
+    "The defect detector can include false positives on woven texture.",
+    "The DSP symmetry vote is a heuristic, not a trained model or calibrated probability."
+  ]
+}

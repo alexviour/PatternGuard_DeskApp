@@ -111,9 +111,9 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn(b"Previous textile image", detail.data)
                 self.assertIn(b"Next textile image", detail.data)
                 self.assertIn(b"swipe to browse", detail.data)
-                self.assertIn(
-                    f"{len(item['sample_paths'])}".encode(), detail.data
-                )
+                self.assertNotIn(b"carousel-filename", detail.data)
+                self.assertNotIn(b"carousel-count", detail.data)
+                self.assertNotIn(b"class=\"carousel-caption\"", detail.data)
 
     def test_reference_detail_can_start_at_requested_sample(self):
         item = webapp.REFERENCE_ITEMS[0]
@@ -123,11 +123,9 @@ class WebAppTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(
-            item["sample_paths"][requested_sample].name.encode(),
-            response.data,
-        )
-        self.assertIn(b"4 / 18", response.data)
+        self.assertIn(b"carousel-image", response.data)
+        self.assertIn(b"data-sample-index=\"3\"", response.data)
+        self.assertNotIn(b"4 / 18", response.data)
 
     def test_reference_detail_rejects_unknown_textile(self):
         response = self.client.get("/references/not-a-textile")
@@ -358,6 +356,88 @@ class WebAppTests(unittest.TestCase):
             np.count_nonzero(reconstruction.call_args.args[1]), 40 * 40
         )
 
+    def test_restoration_step_accepts_new_manual_damage_marks(self):
+        y, x = np.indices((256, 256))
+        pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
+        rgb_image = np.stack([pixels, pixels, pixels], axis=2)
+        image_buffer = io.BytesIO()
+        Image.fromarray(rgb_image).save(image_buffer, format="PNG")
+        image_buffer.seek(0)
+        detector_inputs = []
+
+        def capture_detector_input(image, *_args, **_kwargs):
+            detector_inputs.append(image.copy())
+            return (
+                np.zeros((256, 256), dtype=np.uint8),
+                np.zeros((256, 256), dtype=np.float32),
+            )
+
+        def return_distinct_reconstruction(image, *_args, **_kwargs):
+            reconstructed = image.copy()
+            reconstructed[0, 0] = (12, 34, 56)
+            return reconstructed
+
+        with patch.object(webapp, "_get_classifier") as get_classifier:
+            with patch.object(
+                webapp,
+                "run_algorithm_ii_defect_isolation",
+                side_effect=capture_detector_input,
+            ):
+                with patch.object(
+                    webapp,
+                    "run_algorithm_iii_template_alignment",
+                    side_effect=return_distinct_reconstruction,
+                ):
+                    get_classifier.return_value.predict.return_value = {
+                        "main_category": "Pinilian",
+                        "subclass": "Sinan Bayabas",
+                        "confidence": 96.0,
+                        "is_supported": True,
+                    }
+                    first_response = self.client.post(
+                        "/analyze",
+                        data={"image": (image_buffer, "textile.png")},
+                        content_type="multipart/form-data",
+                    )
+                    self.assertEqual(first_response.status_code, 200)
+                    match = re.search(
+                        rb"/results/([a-f0-9]{32})/images/original",
+                        first_response.data,
+                    )
+                    self.assertIsNotNone(match)
+                    result_id = match.group(1).decode("ascii")
+
+                    missing_marks = self.client.post(
+                        f"/results/{result_id}/restore",
+                        data={"damage_mask": ""},
+                    )
+                    self.assertEqual(missing_marks.status_code, 400)
+                    self.assertIn(
+                        b"Paint over the missed damage", missing_marks.data
+                    )
+
+                    mask_pixels = np.zeros((256, 256, 4), dtype=np.uint8)
+                    mask_pixels[180:220, 20:60, :3] = (255, 35, 35)
+                    mask_pixels[180:220, 20:60, 3] = 204
+                    mask_buffer = io.BytesIO()
+                    Image.fromarray(mask_pixels).save(mask_buffer, format="PNG")
+                    damage_mask = "data:image/png;base64," + base64.b64encode(
+                        mask_buffer.getvalue()
+                    ).decode("ascii")
+                    restored_response = self.client.post(
+                        f"/results/{result_id}/restore",
+                        data={"damage_mask": damage_mask},
+                    )
+
+        self.assertEqual(
+            restored_response.status_code,
+            200,
+            restored_response.data.decode(),
+        )
+        self.assertIn(b"1,600 added from your painted marks", restored_response.data)
+        self.assertEqual(len(detector_inputs), 2)
+        np.testing.assert_array_equal(detector_inputs[1][0, 0], [12, 34, 56])
+
     def test_analysis_images_and_pdf_are_downloadable(self):
         y, x = np.indices((256, 256))
         pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
@@ -384,6 +464,33 @@ class WebAppTests(unittest.TestCase):
         self.assertIn(b"Commonly used by/in:</strong> Abra, Tinguian, Ineg", response.data)
         self.assertIn(b"INTERPRETABLE AUDIT RESULT", response.data)
         self.assertIn(b"REPEATING-PATTERN SYMMETRY", response.data)
+        self.assertIn(b"View Operations Matrix", response.data)
+        self.assertEqual(
+            len(re.findall(rb"<button[^>]*data-open-operations", response.data)),
+            2,
+        )
+        pipeline_start = response.data.index(b"TECHNICAL PIPELINE BREAKDOWN")
+        pipeline_end = response.data.index(
+            b"Local symmetry tests", pipeline_start
+        )
+        self.assertIn(
+            b"View Operations Matrix",
+            response.data[pipeline_start:pipeline_end],
+        )
+        self.assertIn(b'data-operation-canvas="original"', response.data)
+        self.assertIn(b'data-operation-canvas="horizontal"', response.data)
+        self.assertIn(b'data-operation-canvas="vertical"', response.data)
+        self.assertIn(b'data-operation-canvas="difference"', response.data)
+        self.assertLess(
+            response.data.index(b"View Operations Matrix"),
+            response.data.index(b'data-step-panel="1"'),
+        )
+        self.assertIn(
+            b"Did the system miss any damage or leave an area unrepaired?",
+            response.data,
+        )
+        self.assertIn(b"Restore marked areas", response.data)
+        self.assertIn(b"data-result-damage-canvas", response.data)
         self.assertIn(b'data-step-panel="1"', response.data)
         self.assertLess(
             response.data.index(b'id="capture-guide"'),

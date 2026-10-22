@@ -10,6 +10,11 @@ ground truth, applies fixed synthetic masks, and passes the same known mask to
 all three methods. Consequently, it evaluates restoration quality, not defect
 detection quality.
 
+The system's calculate_restoration_metrics function is also applied to each
+restored result to report SSIM, Accuracy, Recall, FPR, IoU, and SFS. Its
+predicted defect mask is inferred from pixels changed by restoration; it is
+not an independently detected mask.
+
 The restoration timings exclude image loading, synthetic damage generation,
 and DSP repeat-spacing estimation. Repeat spacing is computed once per test
 case before the timed restoration calls. The DSP method currently falls back
@@ -37,6 +42,7 @@ from dsp_engine import (
     run_algorithm_i_autocorrelation,
     run_algorithm_iii_template_alignment,
 )
+from evaluation_metrics import calculate_restoration_metrics
 
 
 IMAGE_SIZE = 256
@@ -89,6 +95,12 @@ class CaseResult:
     damaged_pixels: int
     mae: float
     psnr_db: float
+    ssim: float
+    accuracy: float
+    recall: float
+    fpr: float
+    iou: float
+    sfs: float
     median_ms: float
 
 
@@ -276,6 +288,21 @@ def _measure_method(
         restored_image,
         case.damage_mask,
     )
+    damaged_gray = cv2.cvtColor(
+        case.damaged_image,
+        cv2.COLOR_BGR2GRAY,
+    )
+    restored_gray = cv2.cvtColor(
+        restored_image,
+        cv2.COLOR_BGR2GRAY,
+    )
+    ssim_value, accuracy, recall, fpr, iou, sfs = (
+        calculate_restoration_metrics(
+            damaged_gray,
+            restored_gray,
+            case.damage_mask,
+        )
+    )
     return CaseResult(
         textile=case.textile,
         damage=case.damage,
@@ -283,6 +310,12 @@ def _measure_method(
         damaged_pixels=int(np.count_nonzero(case.damage_mask)),
         mae=mae,
         psnr_db=psnr_db,
+        ssim=ssim_value,
+        accuracy=accuracy,
+        recall=recall,
+        fpr=fpr,
+        iou=iou,
+        sfs=sfs,
         median_ms=float(statistics.median(durations_ms)),
     )
 
@@ -350,6 +383,26 @@ def _summarize(
                 "median_case_mae": float(
                     statistics.median(result.mae for result in method_results)
                 ),
+                "median_ssim": float(
+                    statistics.median(result.ssim for result in method_results)
+                ),
+                "median_accuracy": float(
+                    statistics.median(
+                        result.accuracy for result in method_results
+                    )
+                ),
+                "median_recall": float(
+                    statistics.median(result.recall for result in method_results)
+                ),
+                "median_fpr": float(
+                    statistics.median(result.fpr for result in method_results)
+                ),
+                "median_iou": float(
+                    statistics.median(result.iou for result in method_results)
+                ),
+                "median_sfs": float(
+                    statistics.median(result.sfs for result in method_results)
+                ),
                 "median_time_ms": float(
                     statistics.median(
                         result.median_ms for result in method_results
@@ -388,6 +441,12 @@ def _write_csv(
                 "timed_runs",
                 "mae",
                 "psnr_db",
+                "ssim",
+                "accuracy",
+                "recall",
+                "fpr",
+                "iou",
+                "sfs",
                 "median_restore_ms",
             )
         )
@@ -407,6 +466,12 @@ def _write_csv(
                     TIMED_RUNS,
                     f"{result.mae:.6f}",
                     f"{result.psnr_db:.6f}",
+                    f"{result.ssim:.6f}",
+                    f"{result.accuracy:.6f}",
+                    f"{result.recall:.6f}",
+                    f"{result.fpr:.6f}",
+                    f"{result.iou:.6f}",
+                    f"{result.sfs:.6f}",
                     f"{result.median_ms:.6f}",
                 )
             )
@@ -462,23 +527,29 @@ def main() -> int:
         "method and case; restoration stage only"
     )
     print(
-        "Metrics are measured on masked RGB samples against the clean "
-        "reference; all methods receive the same known mask."
+        "MAE/PSNR use masked RGB samples against the clean reference; "
+        "SFS metrics follow calculate_restoration_metrics using the damaged "
+        "input, restored output, and known mask. The predicted mask is "
+        "inferred from restoration changes, not independently detected."
     )
     print()
     print(
-        f"{'Algorithm':<30} {'Aggregate MAE':>14} "
-        f"{'Aggregate PSNR':>16} {'Median case MAE':>17} "
-        f"{'Median ms':>11} {'Best-MAE cases':>16}"
+        f"{'Algorithm':<26} {'MAE':>8} {'PSNR':>9} {'SSIM':>8} "
+        f"{'Accuracy':>10} {'Recall':>9} {'FPR':>8} {'IoU':>8} "
+        f"{'SFS':>8} {'Median ms':>10}"
     )
     for summary in summaries:
         print(
-            f"{summary['algorithm']:<30} "
-            f"{summary['aggregate_mae']:>14.3f} "
-            f"{summary['aggregate_psnr_db']:>13.3f} dB "
-            f"{summary['median_case_mae']:>17.3f} "
-            f"{summary['median_time_ms']:>11.3f} "
-            f"{summary['cases_with_lowest_mae']:>12}/{summary['case_count']}"
+            f"{summary['algorithm']:<26} "
+            f"{summary['aggregate_mae']:>8.3f} "
+            f"{summary['aggregate_psnr_db']:>8.3f} "
+            f"{summary['median_ssim']:>8.2f} "
+            f"{summary['median_accuracy']:>10.2f} "
+            f"{summary['median_recall']:>9.2f} "
+            f"{summary['median_fpr']:>8.2f} "
+            f"{summary['median_iou']:>8.2f} "
+            f"{summary['median_sfs']:>8.2f} "
+            f"{summary['median_time_ms']:>10.3f}"
         )
     print()
     print(f"Per-case results written to: {args.csv.resolve()}")
