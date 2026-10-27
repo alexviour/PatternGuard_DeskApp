@@ -1,0 +1,12 @@
+actual \ predicted,binakol_concha_concha,binakol_kinkinelleng,binakol_kulalabang,binakol_kusikus,binakol_paddak_ti_pusa,pinilian_sinan_agatul,pinilian_sinan_bayabas,pinilian_sinan_bituwon,pinilian_sinan_init,pinilian_sinan_kabalyo,pinilian_sinan_sabong
+binakol_concha_concha,7,0,0,0,0,0,0,0,0,0,0
+binakol_kinkinelleng,0,8,0,0,0,0,0,0,0,0,0
+binakol_kulalabang,0,0,10,0,0,0,0,0,0,0,0
+binakol_kusikus,0,0,0,23,0,0,0,0,0,0,0
+binakol_paddak_ti_pusa,0,0,0,0,10,0,0,0,0,0,0
+pinilian_sinan_agatul,0,0,0,0,0,14,0,0,0,0,0
+pinilian_sinan_bayabas,0,0,0,0,0,0,15,0,0,0,0
+pinilian_sinan_bituwon,0,0,0,0,0,1,0,5,0,0,0
+pinilian_sinan_init,0,0,0,0,0,0,0,0,5,0,0
+pinilian_sinan_kabalyo,0,0,0,0,0,0,0,0,0,24,0
+pinilian_sinan_sabong,0,0,0,0,0,0,0,0,0,0,14

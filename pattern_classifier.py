@@ -1,13 +1,31 @@
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
 
+
 class PatternClassifier:
     MIN_SUPPORTED_CONFIDENCE = 80.0
 
-    def __init__(self, model_path="models/pattern_classifier.pth"):
+    def __init__(
+        self,
+        model_path=None,
+        gate_model_path=None,
+    ):
         self.device = torch.device("cpu")
+        model_dir = Path(__file__).resolve().parent / "models"
+        model_path = (
+            Path(model_path)
+            if model_path
+            else model_dir / "pattern_classifier.pth"
+        )
+        gate_model_path = (
+            Path(gate_model_path)
+            if gate_model_path
+            else model_dir / "textile_input_gate.pth"
+        )
         checkpoint = torch.load(model_path, map_location=self.device)
         
         # Safe fallback for class names key
@@ -27,6 +45,31 @@ class PatternClassifier:
         self.model.to(self.device)
         self.model.eval()
 
+        gate_checkpoint = torch.load(
+            gate_model_path, map_location=self.device
+        )
+        self.gate_classes = gate_checkpoint.get("classes")
+        if self.gate_classes != ["non_textile", "textile"]:
+            raise ValueError(
+                "The textile input gate checkpoint must define "
+                "['non_textile', 'textile'] classes."
+            )
+        self.textile_class_index = self.gate_classes.index("textile")
+        self.textile_probability_threshold = float(
+            gate_checkpoint["textile_threshold"]
+        )
+        if not 0.0 <= self.textile_probability_threshold <= 1.0:
+            raise ValueError(
+                "The textile input gate threshold must be between 0 and 1."
+            )
+
+        self.input_gate = models.mobilenet_v3_small(weights=None)
+        gate_num_ftrs = self.input_gate.classifier[3].in_features
+        self.input_gate.classifier[3] = nn.Linear(gate_num_ftrs, 2)
+        self.input_gate.load_state_dict(gate_checkpoint["model_state_dict"])
+        self.input_gate.to(self.device)
+        self.input_gate.eval()
+
         # Fast CPU preprocess transform
         self.transform = transforms.Compose([
             transforms.Resize((224, 224)),
@@ -39,6 +82,28 @@ class PatternClassifier:
         tensor = self.transform(image).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
+            gate_outputs = self.input_gate(tensor)
+            gate_probabilities = torch.nn.functional.softmax(
+                gate_outputs[0], dim=0
+            )
+            textile_probability = float(
+                gate_probabilities[self.textile_class_index].item()
+            )
+            gate_confidence = textile_probability * 100.0
+            gate_threshold = self.textile_probability_threshold * 100.0
+            if textile_probability < self.textile_probability_threshold:
+                return {
+                    "main_category": "Unsupported object",
+                    "subclass": "No textile or repeating fabric pattern detected",
+                    "confidence": gate_confidence,
+                    "is_supported": False,
+                    "classification_supported": False,
+                    "reason": "non_textile",
+                    "support_threshold": gate_threshold,
+                    "gate_confidence": gate_confidence,
+                    "gate_threshold": gate_threshold,
+                }
+
             outputs = self.model(tensor)
             probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
             conf, pred_idx = torch.max(probabilities, dim=0)
@@ -48,11 +113,15 @@ class PatternClassifier:
 
         if confidence < self.MIN_SUPPORTED_CONFIDENCE:
             return {
-                "main_category": "Unsupported or uncertain input",
-                "subclass": "Not recognized as Pinilian or Binakol",
+                "main_category": "Textile or repeating pattern",
+                "subclass": "Specific type not identified",
                 "confidence": confidence,
-                "is_supported": False,
+                "is_supported": True,
+                "classification_supported": False,
+                "reason": "low_class_confidence",
                 "support_threshold": self.MIN_SUPPORTED_CONFIDENCE,
+                "gate_confidence": gate_confidence,
+                "gate_threshold": gate_threshold,
             }
         
         # Parse category and subclass from folder name string
@@ -68,5 +137,8 @@ class PatternClassifier:
             "subclass": subclass,
             "confidence": confidence,
             "is_supported": True,
+            "classification_supported": True,
             "support_threshold": self.MIN_SUPPORTED_CONFIDENCE,
+            "gate_confidence": gate_confidence,
+            "gate_threshold": gate_threshold,
         }

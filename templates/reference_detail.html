@@ -21,8 +21,8 @@
     </header>
 
     <main class="page-shell reference-detail-shell">
-      <a class="back-link" href="{{ url_for('index') }}#reference-guide">← Back to textile guide</a>
       <section class="reference-detail" aria-labelledby="reference-detail-title">
+        <a class="back-link" href="{{ url_for('index') }}#reference-guide">← Back to textile guide</a>
         <div class="reference-detail-copy">
           <p class="eyebrow">TEXTILE FIELD GUIDE</p>
           <h1 id="reference-detail-title">{{ item.title }}</h1>
@@ -55,10 +55,6 @@
               <a class="carousel-arrow carousel-next" href="{{ url_for('reference_detail', slug=item.slug, sample=next_index) }}" aria-label="Next textile image">›</a>
             {% endif %}
           </div>
-          <div class="carousel-caption">
-            <span class="carousel-filename">{{ sample.name }}</span>
-            <span class="carousel-count">{{ sample_index + 1 }} / {{ item.sample_paths|length }}</span>
-          </div>
           <p class="swipe-hint">Use the arrows or swipe to browse all of the images.</p>
         </div>
       </section>
@@ -71,10 +67,7 @@
     <script>
       const carousel = document.getElementById("sample-carousel");
       const image = carousel.querySelector(".carousel-image");
-      const filename = carousel.querySelector(".carousel-filename");
-      const count = carousel.querySelector(".carousel-count");
       const sampleUrls = {{ sample_urls|tojson }};
-      const sampleNames = {{ item.sample_paths|map(attribute='name')|list|tojson }};
       let currentIndex = Number(carousel.dataset.sampleIndex);
       let touchStartX = null;
 
@@ -82,8 +75,6 @@
         currentIndex = (index + sampleUrls.length) % sampleUrls.length;
         image.src = sampleUrls[currentIndex];
         image.alt = "{{ item.title|e }} textile sample " + (currentIndex + 1);
-        filename.textContent = sampleNames[currentIndex];
-        count.textContent = (currentIndex + 1) + " / " + sampleUrls.length;
         carousel.dataset.sampleIndex = currentIndex;
         carousel.querySelector(".carousel-previous").href =
           "?sample=" + ((currentIndex - 1 + sampleUrls.length) % sampleUrls.length);

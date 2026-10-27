@@ -166,7 +166,7 @@ def classify_wallpaper_group(I_gray, a1, a2, M_mask=None, ncc_threshold=0.55, vo
 """2D Wiener-Khinchin FFT & Wallpaper Group Classification."""
 
 
-def run_algorithm_i_autocorrelation(I_gray, include_evidence=False):
+def estimate_repeat_spacing(I_gray):
     F = fft.fft2(I_gray)
     S = F * np.conj(F)
     R_xx = fft.ifft2(S)
@@ -187,6 +187,11 @@ def run_algorithm_i_autocorrelation(I_gray, include_evidence=False):
         a2_val = 48.0
 
     theta_dom = float(np.degrees(np.arctan2(a1_val, a2_val)))
+    return R_xx, a1_val, a2_val, theta_dom
+
+
+def run_algorithm_i_autocorrelation(I_gray, include_evidence=False):
+    R_xx, a1_val, a2_val, theta_dom = estimate_repeat_spacing(I_gray)
 
     try:
         symmetry_evidence = _classify_wallpaper_group_with_evidence(

@@ -1,0 +1,315 @@
+{
+  "dataset": "dataset",
+  "sample_count": 170,
+  "class_count": 11,
+  "class_names": [
+    "binakol_concha_concha",
+    "binakol_kinkinelleng",
+    "binakol_kulalabang",
+    "binakol_kusikus",
+    "binakol_paddak_ti_pusa",
+    "pinilian_sinan_agatul",
+    "pinilian_sinan_bayabas",
+    "pinilian_sinan_bituwon",
+    "pinilian_sinan_init",
+    "pinilian_sinan_kabalyo",
+    "pinilian_sinan_sabong"
+  ],
+  "seed": 42,
+  "validation_fraction_requested": 0.2,
+  "train_count": 136,
+  "validation_count": 34,
+  "model": "MobileNetV3-Small",
+  "initialization": "ImageNet pretrained weights",
+  "device": "cpu",
+  "epochs": 15,
+  "batch_size": 8,
+  "learning_rate": 0.0001,
+  "selected_checkpoint": "epoch with lowest validation loss",
+  "selected_epoch": 14,
+  "train_at_selected_checkpoint": {
+    "sample_count": 136,
+    "accuracy_percent": 99.26470588235294,
+    "macro_precision_percent": 99.39393939393939,
+    "macro_recall_percent": 98.48484848484848,
+    "macro_f1_percent": 98.86007409518382,
+    "support_by_class": [
+      7,
+      8,
+      10,
+      23,
+      10,
+      14,
+      15,
+      6,
+      5,
+      24,
+      14
+    ],
+    "class_metrics_one_vs_rest": [
+      {
+        "true_positive": 7,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 129,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 8,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 128,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 10,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 126,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 23,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 113,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 10,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 126,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 14,
+        "false_positive": 1,
+        "false_negative": 0,
+        "true_negative": 121,
+        "precision_percent": 93.33333333333333,
+        "recall_percent": 100.0,
+        "f1_percent": 96.55172413793103
+      },
+      {
+        "true_positive": 15,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 121,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 5,
+        "false_positive": 0,
+        "false_negative": 1,
+        "true_negative": 130,
+        "precision_percent": 100.0,
+        "recall_percent": 83.33333333333334,
+        "f1_percent": 90.9090909090909
+      },
+      {
+        "true_positive": 5,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 131,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 24,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 112,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 14,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 122,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      }
+    ],
+    "micro_one_vs_rest": {
+      "true_positive": 135,
+      "false_positive": 1,
+      "false_negative": 1,
+      "true_negative": 1359,
+      "precision_percent": 99.26470588235294,
+      "recall_percent": 99.26470588235294,
+      "f1_percent": 99.26470588235294
+    },
+    "loss": 0.12173004930510241
+  },
+  "validation_at_selected_checkpoint": {
+    "sample_count": 34,
+    "accuracy_percent": 94.11764705882354,
+    "macro_precision_percent": 96.36363636363636,
+    "macro_recall_percent": 93.93939393939394,
+    "macro_f1_percent": 93.87052341597796,
+    "support_by_class": [
+      2,
+      2,
+      2,
+      6,
+      2,
+      4,
+      4,
+      2,
+      1,
+      6,
+      3
+    ],
+    "class_metrics_one_vs_rest": [
+      {
+        "true_positive": 2,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 32,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 2,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 32,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 2,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 32,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 6,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 28,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 2,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 32,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 4,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 30,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 4,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 30,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 1,
+        "false_positive": 0,
+        "false_negative": 1,
+        "true_negative": 32,
+        "precision_percent": 100.0,
+        "recall_percent": 50.0,
+        "f1_percent": 66.66666666666666
+      },
+      {
+        "true_positive": 1,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_negative": 33,
+        "precision_percent": 100.0,
+        "recall_percent": 100.0,
+        "f1_percent": 100.0
+      },
+      {
+        "true_positive": 5,
+        "false_positive": 0,
+        "false_negative": 1,
+        "true_negative": 28,
+        "precision_percent": 100.0,
+        "recall_percent": 83.33333333333334,
+        "f1_percent": 90.9090909090909
+      },
+      {
+        "true_positive": 3,
+        "false_positive": 2,
+        "false_negative": 0,
+        "true_negative": 29,
+        "precision_percent": 60.0,
+        "recall_percent": 100.0,
+        "f1_percent": 74.99999999999999
+      }
+    ],
+    "micro_one_vs_rest": {
+      "true_positive": 32,
+      "false_positive": 2,
+      "false_negative": 2,
+      "true_negative": 338,
+      "precision_percent": 94.11764705882354,
+      "recall_percent": 94.11764705882354,
+      "f1_percent": 94.11764705882354
+    },
+    "loss": 0.29815662170157714
+  },
+  "fit_diagnostics": {
+    "assessment": "no_clear_signal",
+    "explanation": "The configured thresholds do not provide a clear overfit or underfit signal. Inspect the learning curves and confusion matrices.",
+    "final_train_validation_accuracy_gap_percentage_points": 10.294117647058826,
+    "validation_loss_worsened_near_end": true,
+    "heuristic_thresholds": {
+      "overfit": "train accuracy >= 95%, train-validation gap >= 15 percentage points, and validation loss worsens near training end",
+      "underfit": "both final train and validation accuracy < 80%"
+    },
+    "limitation": "Heuristic only. The validation split is small and comes from the same source collection; this is not a definitive diagnosis or an independent estimate of real-world performance."
+  },
+  "files": {
+    "history_csv": "training_history.csv",
+    "split_manifest_csv": "split_manifest.csv",
+    "fit_curves_png": "fit_curves.png",
+    "train_confusion_matrix_csv": "train_confusion_matrix.csv",
+    "train_confusion_matrix_png": "train_confusion_matrix.png",
+    "train_classification_summary_csv": "train_classification_summary.csv",
+    "validation_confusion_matrix_csv": "validation_confusion_matrix.csv",
+    "validation_confusion_matrix_png": "validation_confusion_matrix.png",
+    "validation_classification_summary_csv": "validation_classification_summary.csv"
+  },
+  "validation_note": "Validation metrics are used for epoch selection. This is a single small stratified split, not a final independent test set."
+}

@@ -1,0 +1,220 @@
+{
+  "evaluation": "system evaluation, separate from algorithm comparison",
+  "dataset": "dataset",
+  "test_dataset": null,
+  "classification": {
+    "training_dataset_diagnostic": {
+      "sample_count": 170,
+      "accuracy_percent": 100.0,
+      "precision_macro_percent": 100.0,
+      "recall_macro_percent": 100.0,
+      "f1_macro_percent": 100.0,
+      "confusion_matrix": [
+        [
+          9,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          10,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          29,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          18,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          19,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          8,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          30,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          17
+        ]
+      ],
+      "mean_confidence_percent": 99.60528496433707,
+      "median_inference_ms": 19.605199981015176,
+      "class_names": [
+        "binakol_concha_concha",
+        "binakol_kinkinelleng",
+        "binakol_kulalabang",
+        "binakol_kusikus",
+        "binakol_paddak_ti_pusa",
+        "pinilian_sinan_agatul",
+        "pinilian_sinan_bayabas",
+        "pinilian_sinan_bituwon",
+        "pinilian_sinan_init",
+        "pinilian_sinan_kabalyo",
+        "pinilian_sinan_sabong"
+      ]
+    },
+    "warning": "The checkpoint was trained using the repository dataset and contains no split or fit history. These results are in-sample diagnostics, not test/generalization accuracy.",
+    "held_out_test": null,
+    "fit_diagnostics": {
+      "status": "not_assessable",
+      "reason": "No independent held-out set was supplied and the checkpoint does not include train/validation loss or accuracy history."
+    }
+  },
+  "wallpaper_group": {
+    "case_count": 11,
+    "metadata_agreement_percent": 0.0,
+    "mean_inference_ms": 464.3613727265884,
+    "ground_truth_warning": "Uses group strings in cultural_data.py; treat as provisional metadata, not expert-verified reference annotations."
+  },
+  "defect_detection": {
+    "pixel_accuracy_percent": 95.88373357599431,
+    "recall_percent": 100.0,
+    "false_positive_rate_percent": 4.222424068509687,
+    "iou_percent": 37.918337459465114,
+    "mean_case_iou_percent": 68.56073745703094,
+    "true_positive_pixels": 54373,
+    "false_positive_pixels": 89022,
+    "false_negative_pixels": 0,
+    "true_negative_pixels": 2019293,
+    "case_count": 33,
+    "mean_detection_ms": 1.8600787840444932
+  },
+  "dsp_restoration": {
+    "ssim_percent": 97.82714518633756,
+    "restoration_accuracy_percent": 68.41162995012958,
+    "defect_recall_percent": 100.0,
+    "defect_fpr_percent": 4.223194668287575,
+    "defect_iou_percent": 68.56073745703094,
+    "sfs_percent": 82.83800738506564,
+    "mae_full": 3.055458435958082,
+    "mae_masked": 20.824805722092137,
+    "psnr_full_db": 33.089340125049326,
+    "defect_detection_ms": 1.8600787840444932,
+    "restoration_ms": 73.47808787987258,
+    "case_count": 33
+  },
+  "methodology_limits": [
+    "Classification on the repository dataset is resubstitution only.",
+    "Wallpaper-group agreement uses unverified cultural_data.py labels.",
+    "Detector and restoration tests use synthetic disk, scratch, and tear damage.",
+    "SFS is the existing project composite; report its components and MAE/PSNR alongside it.",
+    "Synthetic results do not establish performance on naturally damaged textiles."
+  ]
+}

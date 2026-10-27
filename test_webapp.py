@@ -16,6 +16,101 @@ class WebAppTests(unittest.TestCase):
         webapp.app.config.update(TESTING=True)
         self.client = webapp.app.test_client()
 
+    def test_non_textile_upload_is_rejected_before_dsp_processing(self):
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (32, 32), color=(110, 80, 50)).save(
+            image_buffer, format="PNG"
+        )
+        image_buffer.seek(0)
+
+        with patch.object(webapp, "_get_classifier") as get_classifier:
+            get_classifier.return_value.predict.return_value = {
+                "main_category": "Unsupported or uncertain input",
+                "subclass": "Image does not appear to be a supported textile",
+                "confidence": 12.0,
+                "is_supported": False,
+                "reason": "non_textile",
+                "gate_confidence": 12.0,
+                "gate_threshold": 99.53,
+                "support_threshold": 99.53,
+            }
+            with patch.object(
+                webapp, "run_algorithm_i_autocorrelation"
+            ) as autocorrelation:
+                response = self.client.post(
+                    "/analyze",
+                    data={"image": (image_buffer, "portrait.png")},
+                    content_type="multipart/form-data",
+                )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn(b"does not appear to contain a textile, fabric", response.data)
+        self.assertIn(b"Upload a clear image of textile material", response.data)
+        self.assertNotIn(b"Textile screening score", response.data)
+        self.assertNotIn(b"required: 99.53%", response.data)
+        autocorrelation.assert_not_called()
+
+    def test_textile_with_uncertain_classification_still_runs_dsp(self):
+        textile_result = {
+            "main_category": "Textile or repeating pattern",
+            "subclass": "Specific type not identified",
+            "confidence": 54.0,
+            "is_supported": True,
+            "classification_supported": False,
+            "reason": "low_class_confidence",
+            "support_threshold": 80.0,
+        }
+        wallpaper_evidence = {
+            "operations": {
+                name: None
+                for name in ("mirror_h", "mirror_v", "rotation_180", "rotation_90")
+            },
+            "aspect_ratio": 1.0,
+            "is_square": True,
+            "tile_side": 128,
+            "search_radius": 8,
+            "search_step": 2,
+            "ncc_threshold": 0.8,
+            "vote_fraction_threshold": 0.6,
+            "decision_path": "test path",
+        }
+        rgb_image = np.full((256, 256, 3), 120, dtype=np.uint8)
+
+        with patch.object(webapp, "_classify_image", return_value=textile_result):
+            with patch.object(
+                webapp,
+                "run_algorithm_i_autocorrelation",
+                return_value=(None, 16.0, 16.0, None, "p1", wallpaper_evidence),
+            ):
+                with patch.object(
+                    webapp,
+                    "run_algorithm_ii_defect_isolation",
+                    return_value=(
+                        np.zeros((256, 256), dtype=np.uint8),
+                        np.zeros((256, 256), dtype=np.float32),
+                    ),
+                ) as defect_isolation:
+                    with patch.object(
+                        webapp,
+                        "run_algorithm_iii_template_alignment",
+                        return_value=np.zeros((256, 256, 3), dtype=np.uint8),
+                    ):
+                        with patch.object(
+                            webapp,
+                            "calculate_restoration_metrics",
+                            return_value=(99.0, 99.0, 90.0, 1.0, 80.0, 95.0),
+                        ):
+                            result = webapp._analyze_image(rgb_image)
+
+        defect_isolation.assert_called_once()
+        self.assertIn(
+            "Textile or repeating pattern accepted",
+            result["classification"]["text"],
+        )
+        self.assertEqual(
+            result["report"]["category"], "Textile or repeating pattern"
+        )
+
     def test_homepage_loads(self):
         response = self.client.get("/")
 
@@ -29,6 +124,13 @@ class WebAppTests(unittest.TestCase):
         self.assertNotIn(b"STEP 1 OF 5", response.data)
         self.assertNotIn(b"temporary result files expire after 30 minutes", response.data)
         self.assertIn(b"Analyze textile", response.data)
+        self.assertIn(b'id="capture-guidelines-title"', response.data)
+        self.assertIn(
+            b"Photograph the fabric straight-on", response.data
+        )
+        self.assertIn(b"Use bright, even lighting", response.data)
+        self.assertIn(b"include several intact pattern repeats", response.data)
+        self.assertIn(b"Zoomed-out photos are okay", response.data)
         self.assertIn(b"Mark damage the detector may miss", response.data)
         self.assertIn(b'data-damage-tool="erase"', response.data)
         self.assertIn(b"Educational Textile Reference Guide", response.data)
@@ -111,9 +213,9 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn(b"Previous textile image", detail.data)
                 self.assertIn(b"Next textile image", detail.data)
                 self.assertIn(b"swipe to browse", detail.data)
-                self.assertIn(
-                    f"{len(item['sample_paths'])}".encode(), detail.data
-                )
+                self.assertNotIn(b"carousel-filename", detail.data)
+                self.assertNotIn(b"carousel-count", detail.data)
+                self.assertNotIn(b"class=\"carousel-caption\"", detail.data)
 
     def test_reference_detail_can_start_at_requested_sample(self):
         item = webapp.REFERENCE_ITEMS[0]
@@ -123,11 +225,9 @@ class WebAppTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(
-            item["sample_paths"][requested_sample].name.encode(),
-            response.data,
-        )
-        self.assertIn(b"4 / 18", response.data)
+        self.assertIn(b"carousel-image", response.data)
+        self.assertIn(b"data-sample-index=\"3\"", response.data)
+        self.assertNotIn(b"4 / 18", response.data)
 
     def test_reference_detail_rejects_unknown_textile(self):
         response = self.client.get("/references/not-a-textile")
@@ -358,6 +458,88 @@ class WebAppTests(unittest.TestCase):
             np.count_nonzero(reconstruction.call_args.args[1]), 40 * 40
         )
 
+    def test_restoration_step_accepts_new_manual_damage_marks(self):
+        y, x = np.indices((256, 256))
+        pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
+        rgb_image = np.stack([pixels, pixels, pixels], axis=2)
+        image_buffer = io.BytesIO()
+        Image.fromarray(rgb_image).save(image_buffer, format="PNG")
+        image_buffer.seek(0)
+        detector_inputs = []
+
+        def capture_detector_input(image, *_args, **_kwargs):
+            detector_inputs.append(image.copy())
+            return (
+                np.zeros((256, 256), dtype=np.uint8),
+                np.zeros((256, 256), dtype=np.float32),
+            )
+
+        def return_distinct_reconstruction(image, *_args, **_kwargs):
+            reconstructed = image.copy()
+            reconstructed[0, 0] = (12, 34, 56)
+            return reconstructed
+
+        with patch.object(webapp, "_get_classifier") as get_classifier:
+            with patch.object(
+                webapp,
+                "run_algorithm_ii_defect_isolation",
+                side_effect=capture_detector_input,
+            ):
+                with patch.object(
+                    webapp,
+                    "run_algorithm_iii_template_alignment",
+                    side_effect=return_distinct_reconstruction,
+                ):
+                    get_classifier.return_value.predict.return_value = {
+                        "main_category": "Pinilian",
+                        "subclass": "Sinan Bayabas",
+                        "confidence": 96.0,
+                        "is_supported": True,
+                    }
+                    first_response = self.client.post(
+                        "/analyze",
+                        data={"image": (image_buffer, "textile.png")},
+                        content_type="multipart/form-data",
+                    )
+                    self.assertEqual(first_response.status_code, 200)
+                    match = re.search(
+                        rb"/results/([a-f0-9]{32})/images/original",
+                        first_response.data,
+                    )
+                    self.assertIsNotNone(match)
+                    result_id = match.group(1).decode("ascii")
+
+                    missing_marks = self.client.post(
+                        f"/results/{result_id}/restore",
+                        data={"damage_mask": ""},
+                    )
+                    self.assertEqual(missing_marks.status_code, 400)
+                    self.assertIn(
+                        b"Paint over the missed damage", missing_marks.data
+                    )
+
+                    mask_pixels = np.zeros((256, 256, 4), dtype=np.uint8)
+                    mask_pixels[180:220, 20:60, :3] = (255, 35, 35)
+                    mask_pixels[180:220, 20:60, 3] = 204
+                    mask_buffer = io.BytesIO()
+                    Image.fromarray(mask_pixels).save(mask_buffer, format="PNG")
+                    damage_mask = "data:image/png;base64," + base64.b64encode(
+                        mask_buffer.getvalue()
+                    ).decode("ascii")
+                    restored_response = self.client.post(
+                        f"/results/{result_id}/restore",
+                        data={"damage_mask": damage_mask},
+                    )
+
+        self.assertEqual(
+            restored_response.status_code,
+            200,
+            restored_response.data.decode(),
+        )
+        self.assertIn(b"1,600 added from your painted marks", restored_response.data)
+        self.assertEqual(len(detector_inputs), 2)
+        np.testing.assert_array_equal(detector_inputs[1][0, 0], [12, 34, 56])
+
     def test_analysis_images_and_pdf_are_downloadable(self):
         y, x = np.indices((256, 256))
         pixels = (((x // 16 + y // 16) % 2) * 180 + 40).astype(np.uint8)
@@ -384,6 +566,33 @@ class WebAppTests(unittest.TestCase):
         self.assertIn(b"Commonly used by/in:</strong> Abra, Tinguian, Ineg", response.data)
         self.assertIn(b"INTERPRETABLE AUDIT RESULT", response.data)
         self.assertIn(b"REPEATING-PATTERN SYMMETRY", response.data)
+        self.assertIn(b"View Operations Matrix", response.data)
+        self.assertEqual(
+            len(re.findall(rb"<button[^>]*data-open-operations", response.data)),
+            2,
+        )
+        pipeline_start = response.data.index(b"TECHNICAL PIPELINE BREAKDOWN")
+        pipeline_end = response.data.index(
+            b"Local symmetry tests", pipeline_start
+        )
+        self.assertIn(
+            b"View Operations Matrix",
+            response.data[pipeline_start:pipeline_end],
+        )
+        self.assertIn(b'data-operation-canvas="original"', response.data)
+        self.assertIn(b'data-operation-canvas="horizontal"', response.data)
+        self.assertIn(b'data-operation-canvas="vertical"', response.data)
+        self.assertIn(b'data-operation-canvas="difference"', response.data)
+        self.assertLess(
+            response.data.index(b"View Operations Matrix"),
+            response.data.index(b'data-step-panel="1"'),
+        )
+        self.assertIn(
+            b"Did the system miss any damage or leave an area unrepaired?",
+            response.data,
+        )
+        self.assertIn(b"Restore marked areas", response.data)
+        self.assertIn(b"data-result-damage-canvas", response.data)
         self.assertIn(b'data-step-panel="1"', response.data)
         self.assertLess(
             response.data.index(b'id="capture-guide"'),

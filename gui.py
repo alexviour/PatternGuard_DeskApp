@@ -609,7 +609,7 @@ class PatternGuardApp(tk.Tk):
         ).pack(anchor="w", padx=14, pady=(12, 6))
         tk.Label(
             info_box,
-            text="Capture the full repeat. Use even lighting and position the camera directly above the textile. Include at least four complete motif repetitions.",
+            text="Any fabric or woven pattern can be audited. Zoomed-out photos are okay if the fabric pattern is still visible. Use even lighting, hold the camera directly above, and include intact repeats when possible.",
             bg="#F3E7DA",
             fg=self.colors["text_dark"],
             font=("Segoe UI", 10),
@@ -1565,11 +1565,14 @@ class PatternGuardApp(tk.Tk):
 
         if result:
             confidence = result["confidence"]
-            supported = result.get("is_supported", True)
+            input_supported = result.get("is_supported", True)
+            classification_supported = result.get(
+                "classification_supported", input_supported
+            )
             category = result.get("main_category", "Unknown")
             subclass = result.get("subclass", "Unknown")
             confidence_text = f"Confidence: {confidence:.2f}%"
-            if supported:
+            if classification_supported:
                 classification_text = f"Identified Textile: {category} ({subclass})"
                 subclass_id = f"{category.lower()}_{subclass.lower().replace(' ', '_')}"
                 metadata = TEXTILE_METADATA.get(subclass_id)
@@ -1582,17 +1585,49 @@ class PatternGuardApp(tk.Tk):
                     description = "No description is available for this textile."
                     cultural_background = "No cultural background is available for this textile."
                     source = "N/A"
-            else:
+            elif input_supported:
                 classification_text = (
-                    "Unsupported or uncertain input: not confidently "
-                    "recognized as Pinilian or Binakol."
+                    "Textile or repeating pattern accepted; specific type "
+                    "not identified."
                 )
-                confidence_text += (
-                    f" (minimum supported: "
-                    f"{result.get('support_threshold', 80.0):.0f}%)"
+                confidence_text = "No specific class label assigned."
+                description = (
+                    "This textile or repeating pattern was accepted and "
+                    "processed. The classifier did not assign a specific "
+                    "Pinilian or Binakol label."
                 )
-                description = "The image was not confidently identified as a supported textile."
-                cultural_background = "Cultural context is unavailable for this prediction."
+                cultural_background = (
+                    "Cultural context is unavailable because no specific "
+                    "textile type was identified."
+                )
+                source = "N/A"
+            else:
+                if result.get("reason") == "non_textile":
+                    classification_text = (
+                        "Unsupported object: no textile or repeating fabric "
+                        "pattern was detected."
+                    )
+                    confidence_text = "Not classified"
+                    description = (
+                        "Upload an image of textile, fabric, or a repeating "
+                        "woven pattern before running the audit."
+                    )
+                else:
+                    classification_text = (
+                        "Unsupported or uncertain input: not confidently "
+                        "recognized as Pinilian or Binakol."
+                    )
+                    confidence_text += (
+                        f" (minimum supported: "
+                        f"{result.get('support_threshold', 80.0):.0f}%)"
+                    )
+                    description = (
+                        "The image was not confidently identified as a "
+                        "supported textile."
+                    )
+                cultural_background = (
+                    "Cultural context is unavailable for this prediction."
+                )
                 source = "N/A"
 
             classification_details = (
@@ -1603,7 +1638,8 @@ class PatternGuardApp(tk.Tk):
             category = "Classification unavailable"
             subclass = ""
             confidence = None
-            supported = False
+            input_supported = False
+            classification_supported = False
             classification_text = f"Category: {category}"
             confidence_text = "Confidence: --"
             description = "Classification metadata is unavailable."
@@ -1652,14 +1688,15 @@ class PatternGuardApp(tk.Tk):
             pil_img, (270, 270), Image.Resampling.LANCZOS
         )
         self._apply_classification_result(None)
+        self.upload_reconstruct_btn.configure(state="disabled")
+        self.reconstruct_btn.configure(state="disabled")
 
         file_name = os.path.basename(file_path)
         short_name = file_name if len(file_name) < 22 else f"{file_name[:18]}..."
         self.upload_file_name_lbl.configure(text=short_name)
         self.upload_page_canvas.pack_forget()
-        self.upload_reconstruct_btn.configure(state="normal")
         self.upload_banner_msg_lbl.configure(
-            text="Image loaded and ready for the audit pipeline."
+            text="Checking whether the image is a supported textile..."
         )
         self.upload_preview_photo = ImageTk.PhotoImage(preview)
         self.upload_preview.configure(
@@ -1677,11 +1714,28 @@ class PatternGuardApp(tk.Tk):
         )
 
         try:
-            self._apply_classification_result(
-                self.classifier.predict(file_path)
-            )
+            classification_result = self.classifier.predict(file_path)
+            self._apply_classification_result(classification_result)
+            if classification_result.get("is_supported", True):
+                self.upload_reconstruct_btn.configure(state="normal")
+                self.upload_banner_msg_lbl.configure(
+                    text="Textile or repeating-pattern image accepted. Ready for the audit pipeline."
+                )
+            else:
+                self.upload_banner_msg_lbl.configure(
+                    text="Unsupported object. Upload textile, fabric, or a repeating woven pattern."
+                )
+                messagebox.showwarning(
+                    "Unsupported Image",
+                    "This image does not appear to contain textile, fabric, "
+                    "or a repeating woven pattern. "
+                    "The audit pipeline will not run.",
+                )
         except Exception as e:
             self._apply_classification_result(None)
+            self.upload_banner_msg_lbl.configure(
+                text="Textile screening failed. The audit pipeline is unavailable."
+            )
             messagebox.showerror(
                 "Classification Error", f"Failed to classify image:\n{str(e)}"
             )
@@ -1704,12 +1758,21 @@ class PatternGuardApp(tk.Tk):
                 "Image Required", "Please upload a damaged textile image first!"
             )
             return
+        classification_result = self.classification_result
+        if not classification_result or not classification_result.get(
+            "is_supported", False
+        ):
+            messagebox.showwarning(
+                "Unsupported Image",
+                "The audit pipeline only runs for images that pass the "
+                "supported-textile check.",
+            )
+            return
 
         self.upload_reconstruct_btn.configure(
             state="disabled", text="Processing audit..."
         )
         self.reconstruct_btn.configure(state="disabled")
-        image_path = self.uploaded_file_path
         input_bgr = self.original_bgr.copy()
 
         def worker():
@@ -1769,10 +1832,6 @@ class PatternGuardApp(tk.Tk):
             )
             recon_hires = Image.fromarray(final_rgb)
             heatmap_hires = Image.fromarray(heatmap_rgb)
-            try:
-                classification_result = self.classifier.predict(image_path)
-            except Exception:
-                classification_result = None
 
             self.after(
                 0,
@@ -1889,8 +1948,9 @@ class PatternGuardApp(tk.Tk):
             self.export_pdf_btn.configure(state="normal")
         if classification_result:
             confidence = classification_result["confidence"]
+            input_supported = classification_result.get("is_supported", True)
             classification_supported = classification_result.get(
-                "is_supported", True
+                "classification_supported", input_supported
             )
             if classification_supported:
                 category = classification_result["main_category"]
@@ -1903,20 +1963,26 @@ class PatternGuardApp(tk.Tk):
                     f"Classification Result:\n{classification_text}\n"
                     f"{confidence_text}\n\n"
                 )
-            else:
-                category = "Unsupported or uncertain input"
-                subclass = "Not recognized as Pinilian or Binakol"
-                threshold = classification_result.get(
-                    "support_threshold", 80.0
-                )
+            elif input_supported:
+                category = "Textile or repeating pattern"
+                subclass = "Specific type not identified"
                 classification_text = (
-                    "Unsupported or uncertain input: not confidently "
-                    "recognized as Pinilian or Binakol."
+                    "Textile or repeating pattern accepted; specific type "
+                    "not identified."
                 )
-                confidence_text = (
-                    f"Confidence: {confidence:.2f}% "
-                    f"(minimum supported: {threshold:.0f}%)"
+                confidence_text = "No specific class label assigned."
+                classification_details = (
+                    f"Classification Result:\n{classification_text}\n"
+                    f"{confidence_text}\n\n"
                 )
+            else:
+                category = "Unsupported object"
+                subclass = "No textile pattern detected"
+                classification_text = (
+                    "Unsupported object: upload textile, fabric, or a "
+                    "repeating woven pattern."
+                )
+                confidence_text = "Not classified"
                 classification_details = (
                     f"Classification Result:\n{classification_text}\n"
                     f"{confidence_text}\n\n"

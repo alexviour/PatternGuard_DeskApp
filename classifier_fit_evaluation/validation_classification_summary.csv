@@ -1,0 +1,13 @@
+class,support,true_positive,false_positive,false_negative,true_negative,precision_percent,recall_percent,f1_percent
+binakol_concha_concha,2,2,0,0,32,100.0,100.0,100.0
+binakol_kinkinelleng,2,2,0,0,32,100.0,100.0,100.0
+binakol_kulalabang,2,2,0,0,32,100.0,100.0,100.0
+binakol_kusikus,6,6,0,0,28,100.0,100.0,100.0
+binakol_paddak_ti_pusa,2,2,0,0,32,100.0,100.0,100.0
+pinilian_sinan_agatul,4,4,0,0,30,100.0,100.0,100.0
+pinilian_sinan_bayabas,4,4,0,0,30,100.0,100.0,100.0
+pinilian_sinan_bituwon,2,1,0,1,32,100.0,50.0,66.66666666666666
+pinilian_sinan_init,1,1,0,0,33,100.0,100.0,100.0
+pinilian_sinan_kabalyo,6,5,0,1,28,100.0,83.33333333333334,90.9090909090909
+pinilian_sinan_sabong,3,3,2,0,29,60.0,100.0,74.99999999999999
+MICRO_AVERAGE,34,32,2,2,338,94.11764705882354,94.11764705882354,94.11764705882354

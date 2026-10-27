@@ -218,6 +218,10 @@
   margin-bottom: 12px;
 }
 
+.pipeline-heading > .button {
+  flex: 0 0 auto;
+}
+
 .pipeline-heading h3 {
   margin-bottom: 0;
 }
@@ -535,9 +539,18 @@ body {
 }
 
 .intro {
-  max-width: 690px;
   margin: 0 auto 34px;
+  padding: clamp(20px, 4vw, 30px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
   text-align: center;
+}
+
+.intro h1 {
+  max-width: 620px;
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .eyebrow {
@@ -573,6 +586,14 @@ h1 {
 
 .about-shell {
   max-width: 1120px;
+}
+
+.about-content-block {
+  padding: clamp(24px, 5vw, 56px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 14px 38px rgb(57 32 25 / 6%);
 }
 
 .about-intro {
@@ -810,6 +831,28 @@ h1 {
   font-size: 0.9rem;
 }
 
+.capture-guidelines {
+  margin: 0 0 18px;
+  padding: 14px 17px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8f0e8;
+}
+
+.capture-guidelines h3 {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+}
+
+.capture-guidelines ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  color: #53463f;
+  font-size: 0.84rem;
+}
+
 .upload-drop {
   display: flex;
   min-height: 180px;
@@ -1044,6 +1087,23 @@ h1 {
   cursor: crosshair;
 }
 
+.restoration-markup form {
+  display: grid;
+  gap: 12px;
+}
+
+.result-damage-canvas {
+  width: min(100%, 460px);
+}
+
+.damage-mark-status {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--maroon);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -1106,6 +1166,26 @@ h1 {
 
 .results-heading {
   margin-bottom: 22px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.results-section {
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--soft);
+  box-shadow: 0 14px 38px rgb(57 32 25 / 5%);
+}
+
+.results-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .results-heading h2 {
@@ -1194,6 +1274,10 @@ h1 {
 
 .guide-heading {
   margin-bottom: 18px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
 }
 
 .guide-heading h2 {
@@ -1278,12 +1362,11 @@ h1 {
 }
 
 .reference-detail-shell {
-  max-width: 1120px;
+  width: min(100% - 48px, 1360px);
 }
 
 .back-link {
   display: inline-block;
-  margin-bottom: 22px;
   color: var(--maroon);
   font-weight: 750;
   text-decoration: none;
@@ -1298,6 +1381,16 @@ h1 {
   grid-template-columns: minmax(230px, 0.72fr) minmax(0, 1.5fr);
   align-items: start;
   gap: clamp(24px, 5vw, 56px);
+  padding: clamp(20px, 3.5vw, 40px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(57 32 25 / 7%);
+}
+
+.reference-detail > .back-link {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
 }
 
 .reference-detail-copy {
@@ -1334,9 +1427,7 @@ h1 {
   min-height: min(72vh, 760px);
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #e9e1d9;
+  background: transparent;
   touch-action: pan-y;
 }
 
@@ -1653,7 +1744,7 @@ h1 {
 }
 
 .wizard-step.upload-card {
-  max-width: 690px;
+  max-width: none;
 }
 
 .wizard-progress {
@@ -1838,6 +1929,10 @@ h1 {
 
 .wizard-title {
   margin: 28px 0 18px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
 }
 
 .wizard-title h3 {
@@ -1981,6 +2076,10 @@ h1 {
     padding-top: 38px;
   }
 
+  .page-shell.reference-detail-shell {
+    width: min(100% - 28px, 900px);
+  }
+
   .intro {
     margin-bottom: 26px;
   }
@@ -2115,6 +2214,7 @@ h1 {
   .reference-detail {
     grid-template-columns: 1fr;
     gap: 12px;
+    padding: 20px;
   }
 
   .reference-detail-copy {
@@ -2166,7 +2266,11 @@ h1 {
     flex-direction: column;
   }
 
-  .results-heading .button,
+  .results-heading-actions {
+    width: 100%;
+  }
+
+  .results-heading-actions .button,
   .card-heading .button {
     width: 100%;
   }

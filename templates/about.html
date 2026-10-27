@@ -21,106 +21,108 @@
     </header>
 
     <main class="page-shell about-shell">
-      <section class="about-intro">
-        <p class="eyebrow">THE PEOPLE BEHIND PATTERNGUARD</p>
-        <h1>Textile care, built together.</h1>
-        <p class="intro-copy">
-          PatternGuard is a textile auditing and restoration project developed
-          by students at Laguna State Polytechnic University.
-        </p>
-      </section>
-
-      <section class="about-section" aria-labelledby="developers-title">
-        <div class="about-section-heading">
-          <p class="eyebrow">DESIGN &amp; DEVELOPMENT</p>
-          <h2 id="developers-title">The Developers</h2>
-        </div>
-        <div class="people-grid">
-          {% for member in team_members %}
-            <article class="person-card">
-              <img
-                class="person-photo"
-                src="{{ url_for('about_team_image', filename=member.image) }}"
-                alt="Portrait of {{ member.name }}"
-                loading="eager"
-              >
-              <div class="person-info">
-                <p class="person-role">{{ member.role }}</p>
-                <h3>{{ member.name }}</h3>
-              </div>
-            </article>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="about-section adviser-section" aria-labelledby="adviser-title">
-        <div class="about-section-heading">
-          <p class="eyebrow">PROJECT GUIDANCE</p>
-          <h2 id="adviser-title">Our Adviser</h2>
-        </div>
-        <article class="person-card adviser-card">
-          <img
-            class="person-photo"
-            src="{{ url_for('about_team_image', filename=adviser.image) }}"
-            alt="Portrait of {{ adviser.name }}"
-            loading="eager"
-          >
-          <div class="person-info">
-            <p class="person-role">{{ adviser.role }}</p>
-            <h3>{{ adviser.name }}, DIT</h3>
-          </div>
-        </article>
-      </section>
-
-      <section class="school-panel" aria-labelledby="school-title">
-        <div class="school-mark" aria-hidden="true">LSPU</div>
-        <div>
-          <p class="eyebrow">OUR INSTITUTION</p>
-          <h2 id="school-title">Laguna State Polytechnic University</h2>
-          <p>
-            PatternGuard is developed as a project at LSPU, bringing
-            computing and textile heritage together through accessible
-            digital tools.
+      <div class="about-content-block">
+        <section class="about-intro">
+          <p class="eyebrow">THE PEOPLE BEHIND PATTERNGUARD</p>
+          <h1>Textile care, built together.</h1>
+          <p class="intro-copy">
+            PatternGuard is a textile auditing and restoration project developed
+            by students at Laguna State Polytechnic University.
           </p>
-        </div>
-      </section>
+        </section>
 
-      <section class="about-section institutional-commitments" aria-labelledby="commitments-title">
-        <div class="about-section-heading">
-          <p class="eyebrow">LAGUNA STATE POLYTECHNIC UNIVERSITY</p>
-          <h2 id="commitments-title">Our Commitments</h2>
-        </div>
-        <div class="commitments-grid">
-          <article class="commitment-card">
-            <p class="person-role">Vision</p>
-            <p>
-              An ASEAN Polytechnic University by 2030.
-            </p>
+        <section class="about-section" aria-labelledby="developers-title">
+          <div class="about-section-heading">
+            <p class="eyebrow">DESIGN &amp; DEVELOPMENT</p>
+            <h2 id="developers-title">The Developers</h2>
+          </div>
+          <div class="people-grid">
+            {% for member in team_members %}
+              <article class="person-card">
+                <img
+                  class="person-photo"
+                  src="{{ url_for('about_team_image', filename=member.image) }}"
+                  alt="Portrait of {{ member.name }}"
+                  loading="eager"
+                >
+                <div class="person-info">
+                  <p class="person-role">{{ member.role }}</p>
+                  <h3>{{ member.name }}</h3>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="about-section adviser-section" aria-labelledby="adviser-title">
+          <div class="about-section-heading">
+            <p class="eyebrow">PROJECT GUIDANCE</p>
+            <h2 id="adviser-title">Our Adviser</h2>
+          </div>
+          <article class="person-card adviser-card">
+            <img
+              class="person-photo"
+              src="{{ url_for('about_team_image', filename=adviser.image) }}"
+              alt="Portrait of {{ adviser.name }}"
+              loading="eager"
+            >
+            <div class="person-info">
+              <p class="person-role">{{ adviser.role }}</p>
+              <h3>{{ adviser.name }}, DIT</h3>
+            </div>
           </article>
-          <article class="commitment-card">
-            <p class="person-role">Mission</p>
+        </section>
+
+        <section class="school-panel" aria-labelledby="school-title">
+          <div class="school-mark" aria-hidden="true">LSPU</div>
+          <div>
+            <p class="eyebrow">OUR INSTITUTION</p>
+            <h2 id="school-title">Laguna State Polytechnic University</h2>
             <p>
-              A premier ASEAN polytechnic university that leads in
-              multidisciplinary education and applied research, equipping
-              future-ready servant leaders to drive innovation for sustainable
-              regional development.
+              PatternGuard is developed as a project at LSPU, bringing
+              computing and textile heritage together through accessible
+              digital tools.
             </p>
-          </article>
-          <article class="commitment-card quality-policy">
-            <p class="person-role">Quality Policy</p>
-            <p>
-              LSPU delivers quality education through responsive instruction,
-              distinctive research, sustainable extension and production
-              service. Thus, we are committed to continual improvement to meet
-              applicable requirements and provide quality, efficient, and
-              effective services to university stakeholders, achieving the
-              highest level of satisfaction through an excellent management
-              system imbued with utmost integrity, professionalism, and
-              innovation.
-            </p>
-          </article>
-        </div>
-      </section>
+          </div>
+        </section>
+
+        <section class="about-section institutional-commitments" aria-labelledby="commitments-title">
+          <div class="about-section-heading">
+            <p class="eyebrow">LAGUNA STATE POLYTECHNIC UNIVERSITY</p>
+            <h2 id="commitments-title">Our Commitments</h2>
+          </div>
+          <div class="commitments-grid">
+            <article class="commitment-card">
+              <p class="person-role">Vision</p>
+              <p>
+                An ASEAN Polytechnic University by 2030.
+              </p>
+            </article>
+            <article class="commitment-card">
+              <p class="person-role">Mission</p>
+              <p>
+                A premier ASEAN polytechnic university that leads in
+                multidisciplinary education and applied research, equipping
+                future-ready servant leaders to drive innovation for sustainable
+                regional development.
+              </p>
+            </article>
+            <article class="commitment-card quality-policy">
+              <p class="person-role">Quality Policy</p>
+              <p>
+                LSPU delivers quality education through responsive instruction,
+                distinctive research, sustainable extension and production
+                service. Thus, we are committed to continual improvement to meet
+                applicable requirements and provide quality, efficient, and
+                effective services to university stakeholders, achieving the
+                highest level of satisfaction through an excellent management
+                system imbued with utmost integrity, professionalism, and
+                innovation.
+              </p>
+            </article>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="site-footer">
