@@ -1,7 +1,6 @@
 import base64
 import binascii
 import io
-import logging
 import os
 import tempfile
 import threading
@@ -62,6 +61,12 @@ RESULTS_LOCK = threading.Lock()
 PROCESSING_LOCK = threading.Lock()
 _classifier = None
 _classifier_lock = threading.Lock()
+
+
+class UnsupportedTextileInput(Exception):
+    def __init__(self, classification):
+        self.classification = classification
+        super().__init__("The image did not pass the supported-textile input check.")
 
 
 def create_app():
@@ -206,6 +211,15 @@ def create_app():
         try:
             with PROCESSING_LOCK:
                 result = _analyze_image(original_rgb, manual_damage_mask)
+        except UnsupportedTextileInput:
+            return render_template(
+                "index.html",
+                error=(
+                    "This image does not appear to contain a textile, fabric, "
+                    "or repeating woven pattern. Upload a clear image of "
+                    "textile material to run the audit."
+                ),
+            ), 422
         except Exception as exc:
             app.logger.exception("PatternGuard image analysis failed")
             return render_template(
@@ -246,6 +260,16 @@ def create_app():
         try:
             with PROCESSING_LOCK:
                 result = _analyze_image(restored_rgb, manual_damage_mask)
+        except UnsupportedTextileInput:
+            return render_template(
+                "index.html",
+                result=cached_result,
+                result_id=result_id,
+                error=(
+                    "The updated image did not pass the supported-textile "
+                    "input check. The previous audit is unchanged."
+                ),
+            ), 422
         except Exception as exc:
             app.logger.exception("PatternGuard marked-area restoration failed")
             return render_template(
@@ -412,7 +436,18 @@ def _render_detection_heatmap(diff_map, defect_mask):
     return heatmap
 
 
+def _classify_image(original_rgb):
+    with tempfile.TemporaryDirectory(prefix="patternguard-classify-") as temp_dir:
+        temp_image = Path(temp_dir) / "upload.png"
+        Image.fromarray(original_rgb).save(temp_image, format="PNG")
+        return _get_classifier().predict(str(temp_image))
+
+
 def _analyze_image(original_rgb, manual_damage_mask=None):
+    classification = _classify_image(original_rgb)
+    if not classification.get("is_supported", True):
+        raise UnsupportedTextileInput(classification)
+
     start_time = time.perf_counter()
     original_bgr = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2BGR)
     original_resized = cv2.resize(original_bgr, (256, 256))
@@ -463,18 +498,14 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
     heatmap_bgr = _render_detection_heatmap(diff_map, defect_mask)
     runtime_ms = (time.perf_counter() - start_time) * 1000
 
-    classification = None
-    classification_error = None
-    try:
-        with tempfile.TemporaryDirectory(prefix="patternguard-classify-") as temp_dir:
-            temp_image = Path(temp_dir) / "upload.png"
-            Image.fromarray(original_rgb).save(temp_image, format="PNG")
-            classification = _get_classifier().predict(str(temp_image))
-    except Exception as exc:
-        logging.getLogger(__name__).exception("Textile classification failed")
-        classification_error = f"Classification unavailable: {exc}"
-
-    if classification and classification.get("is_supported", True):
+    if (
+        classification
+        and classification.get("is_supported", True)
+        and classification.get(
+            "classification_supported",
+            classification.get("is_supported", True),
+        )
+    ):
         category = classification["main_category"]
         subclass = classification["subclass"]
         subclass_id = f"{category.lower()}_{subclass.lower().replace(' ', '_')}"
@@ -496,26 +527,42 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         source = metadata.get("source", "N/A")
         classification_text = f"Identified Textile: {category} ({subclass})"
         confidence_text = f"Confidence: {classification['confidence']:.2f}%"
+    elif classification and classification.get("is_supported", True):
+        category = "Textile or repeating pattern"
+        subclass = "Specific type not identified"
+        cultural_description = (
+            "The image passed the textile-pattern input check and was "
+            "processed. The classifier did not assign a specific "
+            "Pinilian or Binakol label."
+        )
+        cultural_background = (
+            "Cultural context is unavailable because no specific textile "
+            "type was identified."
+        )
+        english_name = ""
+        commonly_used_by = ""
+        source = "N/A"
+        classification_text = (
+            "Textile or repeating pattern accepted; specific type not identified."
+        )
+        confidence_text = "No specific class label assigned."
     elif classification:
         category = classification.get(
-            "main_category", "Unsupported or uncertain input"
+            "main_category", "Unsupported object"
         )
         subclass = classification.get("subclass", "")
         cultural_description = (
-            "The image was not confidently identified as a supported textile."
+            "The image did not pass the textile-pattern input check."
         )
         cultural_background = "Cultural context is unavailable for this prediction."
         english_name = ""
         commonly_used_by = ""
         source = "N/A"
         classification_text = (
-            "Unsupported or uncertain input: not confidently recognized "
-            "as Pinilian or Binakol."
+            "Unsupported object: upload an image of textile, fabric, or a "
+            "repeating woven pattern."
         )
-        confidence_text = (
-            f"Confidence: {classification['confidence']:.2f}% "
-            f"(minimum supported: {classification.get('support_threshold', 80):.0f}%)"
-        )
+        confidence_text = "Not classified"
     else:
         category = "Classification unavailable"
         subclass = ""
@@ -659,7 +706,7 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         f"IoU: {iou:.2f}%\n"
         f"Processing time: {runtime_ms:.0f} ms"
     )
-    warning = classification_error
+
     if no_defect_detected:
         no_defect_message = "No defect was detected; no repair was applied."
         details += f"\n\n{no_defect_message}"
@@ -721,7 +768,7 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
             "ssim": f"{ssim_val:.1f}%",
             "runtime": f"{runtime_ms:.0f} ms",
         },
-        "warning": warning,
+        "warning": None,
         "no_defect_message": no_defect_message,
         "report": {
             "sfs_score": score_text,

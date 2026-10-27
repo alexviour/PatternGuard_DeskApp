@@ -32,6 +32,56 @@ areas in the results page and submit them for another restoration pass. Repairs
 are estimates from repeated patterns and cannot guarantee recovery of the
 original weave.
 
+### Supported-textile input screening
+
+Before either application runs the DSP audit, a separate binary
+MobileNetV3-Small gate checks whether an image appears to contain textile,
+fabric, or a repeating woven pattern. Its acceptance threshold is 75%, so
+inputs below that probability are rejected before DSP processing; a passing
+score is a screening result, not proof that an image is textile.
+Passing this gate allows the DSP audit to run even when the 11-class
+classifier cannot confidently identify a Pinilian or Binakol type; in that
+case no specific class or cultural label is assigned.
+
+The training set includes 960 supplemental images from eight texture
+categories in the Describable Textures Dataset (DTD): woven, knitted,
+braided, meshed, interlaced, fibrous, lacelike, and gauzy. These labels
+describe visual texture properties and do not guarantee that every image is
+fabric. DTD is provided for research use; retain its source information and
+verify its terms before redistributing its images or derived materials. See
+the [official DTD page](https://www.robots.ox.ac.uk/~vgg/data/dtd/) and the
+paper by Cimpoi et al., *Describing Textures in the Wild* (CVPR 2014).
+
+At the requested 75% cutoff, this DTD-enhanced checkpoint accepted 222 of 226
+textile validation images (98.23%) and rejected 65 of 66 non-textile
+validation images (98.48%). On the held-out test split it accepted 223 of
+226 textile images (98.67%) and rejected all 66 non-textile images (100%).
+The validation split therefore contained one false acceptance; the held-out
+test contained three false textile rejections. On these same splits, the
+previous gate accepted 72.12% and 75.22% of textile images, respectively,
+while rejecting all non-textile samples. These are small, curated,
+image-level splits: the non-textile samples do not include the reported
+portrait or random screenshot, so these results do not establish that such
+inputs will always be rejected. The trainer's recall-oriented threshold
+selector chose 15.67%; the active checkpoint deliberately retains the
+requested 75% cutoff. The run report records the fixed-cutoff metrics
+separately from metrics at the automatically selected threshold.
+
+To train with additional textile/fabric examples arranged as class folders,
+pass an ImageFolder root with `--additional-textile-datasets` when running
+`evaluate_textile_input_gate.py`. Only add images whose source terms permit
+this research use, keep attribution/license records, and evaluate on a
+separate test collection containing zoomed-out fabrics and unrelated
+screenshots.
+
+The gate weights are stored in `models\textile_input_gate.pth`; the existing
+11-class weights remain in `models\pattern_classifier.pth`. The gate can be
+retrained and evaluated with `evaluate_textile_input_gate.py`. Per-image
+credits for its Open Images non-textile training samples are in
+`models\textile_input_gate_attribution.csv`; retain these credits when
+redistributing the model. The source archives identify the images as CC BY
+2.0 and Open Images annotations as CC BY 4.0.
+
 ## Benchmark textile restoration algorithms
 
 Run the reproducible benchmark from the repository root:
@@ -40,22 +90,42 @@ Run the reproducible benchmark from the repository root:
 python benchmark_restoration.py
 ```
 
-The script compares DSP template alignment, Telea inpainting, and
-Navier–Stokes inpainting on four dataset textiles with disk, scratch, and tear
-masks. It prints masked-pixel MAE and PSNR, the system's SSIM, Accuracy,
-Recall, FPR, IoU, and SFS metrics, plus median restoration time. Per-case
-measurements are written to `restoration_benchmark_results.csv`. All
-algorithms receive the same known synthetic damage mask. The benchmark
-therefore evaluates restoration and restoration-derived SFS metrics, not the
-independent accuracy of the defect detector: the predicted mask used for
-Recall, FPR, and IoU is inferred from pixels changed during restoration.
-The SFS component values follow `calculate_restoration_metrics`: SSIM is
-computed over pixels outside the supplied defect mask, while Accuracy combines
-restoration-change coverage inside the mask with unchanged-pixel integrity
-outside it. Therefore, SFS and its components should be interpreted alongside
-MAE/PSNR against the clean reference; they are not a direct perceptual score
-against the original undamaged textile. Timing excludes image loading, damage
-generation, and DSP repeat-spacing estimation.
+The benchmark evaluates every PNG image in every textile-class folder and
+applies six fixed synthetic masks per source: small/large disks, thin/wide
+scratches, and small/large tears. All algorithms receive identical damaged
+images and masks, with the clean source image as ground truth. The included
+dataset currently supplies 170 images across 11 textile classes, producing
+1,020 paired cases. PatchMatch is a seeded, single-scale exemplar
+implementation: it
+propagates nearest-neighbor patch offsets and uses shrinking random search to
+find intact donor patches; it is inspired by recent non-local patch-based
+inpainting work, not a reproduction of that paper's full multi-scale method.
+The DSP's internal Telea fallback remains unchanged, but Telea is no longer a
+separately benchmarked baseline. The script prints masked-pixel MAE and PSNR,
+the system's SSIM, Accuracy, Recall, FPR, IoU, and SFS metrics, plus median
+restoration time. Per-case measurements are written to
+`restoration_benchmark_results.csv`; overall and damage-type summaries with
+source-image paired bootstrap intervals for MAE differences are written to
+`restoration_benchmark_summary.json`. Timing defaults to one warm-up and five
+timed calls per method and case, and can be adjusted with `--warmup-runs` and
+`--timed-runs`.
+
+Use masked RGB MAE and PSNR against the clean image as the primary
+reconstruction measures. Accuracy, Recall, FPR, and IoU in this benchmark are
+restoration-change measures: the supplied ground-truth defect mask is compared
+with pixels changed by restoration, not with an independently predicted
+defect mask. They are not measures of defect-detector performance, and high
+Recall or Accuracy does not imply that the reconstructed pixels closely match
+the original. The SFS component values follow
+`calculate_restoration_metrics`: SSIM is computed over pixels outside the
+supplied defect mask, while Accuracy combines restoration-change coverage
+inside the mask with unchanged-pixel integrity outside it. Interpret those
+scores alongside MAE/PSNR; they are not a direct perceptual score against the
+original undamaged textile. Bootstrap intervals resample source images, rather
+than treating each mask applied to an image as an independent sample; they are
+descriptive for this dataset and do not replace evaluation on external data.
+Timing excludes image loading, damage generation, and DSP repeat-spacing
+estimation.
 
 ## Evaluate the complete system
 

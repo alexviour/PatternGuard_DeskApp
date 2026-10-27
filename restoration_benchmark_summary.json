@@ -1,0 +1,165 @@
+{
+  "protocol": {
+    "image_size": "256x256",
+    "source_image_count": 170,
+    "textile_class_count": 11,
+    "damage_variants": [
+      "disk_small",
+      "disk_large",
+      "scratch_thin",
+      "scratch_wide",
+      "tear_small",
+      "tear_large"
+    ],
+    "case_count": 1020,
+    "ground_truth": "Original clean source image",
+    "primary_metrics": "Masked RGB MAE and PSNR over known synthetic defect pixels"
+  },
+  "overall": {
+    "DSP template alignment": {
+      "aggregate_mae": 19.86659795067778,
+      "aggregate_psnr_db": 18.00190453469538,
+      "median_case_mae": 13.414950445535553,
+      "median_restore_ms": 8.224199991673231,
+      "median_accuracy": 99.95979275991472,
+      "median_recall": 100.0,
+      "median_fpr": 0.08112574016859156,
+      "median_iou": 95.1951951951952
+    },
+    "PatchMatch exemplar inpainting": {
+      "aggregate_mae": 38.165527567004695,
+      "aggregate_psnr_db": 13.667855026618703,
+      "median_case_mae": 36.58420449745371,
+      "median_restore_ms": 70.69909997517243,
+      "median_accuracy": 100.0,
+      "median_recall": 100.0,
+      "median_fpr": 0.0,
+      "median_iou": 100.0
+    },
+    "Navier-Stokes": {
+      "aggregate_mae": 23.319588549801914,
+      "aggregate_psnr_db": 17.303584840819685,
+      "median_case_mae": 20.671398527865406,
+      "median_restore_ms": 2.591650001704693,
+      "median_accuracy": 100.0,
+      "median_recall": 100.0,
+      "median_fpr": 0.0,
+      "median_iou": 100.0
+    }
+  },
+  "by_damage_type": {
+    "DSP template alignment": {
+      "disk": {
+        "aggregate_mae": 16.16512694022971,
+        "aggregate_psnr_db": 19.79154291923841,
+        "median_case_mae": 12.03011024697028,
+        "median_restore_ms": 7.173349993536249,
+        "median_accuracy": 99.98160045385548,
+        "median_recall": 100.0,
+        "median_fpr": 0.04044866908321536,
+        "median_iou": 96.32183908045977
+      },
+      "scratch": {
+        "aggregate_mae": 16.58149199909849,
+        "aggregate_psnr_db": 19.303384819007203,
+        "median_case_mae": 12.765960343948453,
+        "median_restore_ms": 9.566299995640293,
+        "median_accuracy": 99.93999842633426,
+        "median_recall": 100.0,
+        "median_fpr": 0.13400283408292774,
+        "median_iou": 90.98293426959825
+      },
+      "tear": {
+        "aggregate_mae": 22.6783396622961,
+        "aggregate_psnr_db": 17.070295676255924,
+        "median_case_mae": 17.24889924889925,
+        "median_restore_ms": 7.811049988958985,
+        "median_accuracy": 99.9256991613253,
+        "median_recall": 100.0,
+        "median_fpr": 0.10711102684932405,
+        "median_iou": 95.85395748494264
+      }
+    },
+    "PatchMatch exemplar inpainting": {
+      "disk": {
+        "aggregate_mae": 37.66849789471062,
+        "aggregate_psnr_db": 13.747757067269593,
+        "median_case_mae": 35.37234556933329,
+        "median_restore_ms": 56.23429996194318,
+        "median_accuracy": 100.0,
+        "median_recall": 100.0,
+        "median_fpr": 0.0,
+        "median_iou": 100.0
+      },
+      "scratch": {
+        "aggregate_mae": 36.31232026143791,
+        "aggregate_psnr_db": 14.050441792911784,
+        "median_case_mae": 35.11702127659574,
+        "median_restore_ms": 65.01819999539293,
+        "median_accuracy": 100.0,
+        "median_recall": 100.0,
+        "median_fpr": 0.0,
+        "median_iou": 100.0
+      },
+      "tear": {
+        "aggregate_mae": 39.14163120059229,
+        "aggregate_psnr_db": 13.48612329630511,
+        "median_case_mae": 39.09712670553692,
+        "median_restore_ms": 148.59334999346174,
+        "median_accuracy": 99.95337995337994,
+        "median_recall": 99.84459984459984,
+        "median_fpr": 0.0,
+        "median_iou": 99.84459984459984
+      }
+    },
+    "Navier-Stokes": {
+      "disk": {
+        "aggregate_mae": 23.76557291277375,
+        "aggregate_psnr_db": 17.245713500604694,
+        "median_case_mae": 21.145636172450054,
+        "median_restore_ms": 2.449949999572709,
+        "median_accuracy": 100.0,
+        "median_recall": 100.0,
+        "median_fpr": 0.0,
+        "median_iou": 100.0
+      },
+      "scratch": {
+        "aggregate_mae": 17.756817669596575,
+        "aggregate_psnr_db": 19.451561269176626,
+        "median_case_mae": 16.03503221619617,
+        "median_restore_ms": 2.346850000321865,
+        "median_accuracy": 100.0,
+        "median_recall": 100.0,
+        "median_fpr": 0.0,
+        "median_iou": 100.0
+      },
+      "tear": {
+        "aggregate_mae": 25.506492799312174,
+        "aggregate_psnr_db": 16.658095733465867,
+        "median_case_mae": 24.624320124320125,
+        "median_restore_ms": 5.033099994761869,
+        "median_accuracy": 100.0,
+        "median_recall": 100.0,
+        "median_fpr": 0.0,
+        "median_iou": 100.0
+      }
+    }
+  },
+  "paired_bootstrap_mae_advantage": {
+    "PatchMatch exemplar inpainting": {
+      "mean_paired_mae_advantage": 18.29892961632692,
+      "ci_95_low": 16.925897252417613,
+      "ci_95_high": 19.703312573175918,
+      "source_image_count": 170,
+      "bootstrap_iterations": 5000
+    },
+    "Navier-Stokes": {
+      "mean_paired_mae_advantage": 3.452990599124135,
+      "ci_95_low": 2.185997650441765,
+      "ci_95_high": 4.652716646976892,
+      "source_image_count": 170,
+      "bootstrap_iterations": 5000
+    }
+  },
+  "bootstrap_note": "Positive advantage means baseline MAE minus DSP MAE. Resampling unit is the source image, not each mask case; the interval is descriptive for this dataset."
+}

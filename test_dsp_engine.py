@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 from dsp_engine import (
+    estimate_repeat_spacing,
     run_algorithm_i_autocorrelation,
     run_algorithm_ii_defect_isolation,
     run_algorithm_iii_template_alignment,
@@ -73,6 +74,15 @@ class TestTextileReconstruction(unittest.TestCase):
         )
         self.assertLess(after_error, before_error * 0.05)
         self.assertFalse(np.any(changed_outside_repair))
+
+    def test_repeat_spacing_helper_matches_full_autocorrelation_result(self):
+        gray = cv2.cvtColor(self.clean_fabric, cv2.COLOR_BGR2GRAY)
+
+        spacing_result = estimate_repeat_spacing(gray)
+        full_result = run_algorithm_i_autocorrelation(gray)
+
+        np.testing.assert_array_equal(spacing_result[0], full_result[0])
+        self.assertEqual(spacing_result[1:], full_result[1:4])
 
     def test_reconstructs_circular_mark_with_local_color_match(self):
         self._reconstruct(

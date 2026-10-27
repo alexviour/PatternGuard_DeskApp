@@ -831,6 +831,28 @@ h1 {
   font-size: 0.9rem;
 }
 
+.capture-guidelines {
+  margin: 0 0 18px;
+  padding: 14px 17px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8f0e8;
+}
+
+.capture-guidelines h3 {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+}
+
+.capture-guidelines ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  color: #53463f;
+  font-size: 0.84rem;
+}
+
 .upload-drop {
   display: flex;
   min-height: 180px;

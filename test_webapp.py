@@ -16,6 +16,101 @@ class WebAppTests(unittest.TestCase):
         webapp.app.config.update(TESTING=True)
         self.client = webapp.app.test_client()
 
+    def test_non_textile_upload_is_rejected_before_dsp_processing(self):
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (32, 32), color=(110, 80, 50)).save(
+            image_buffer, format="PNG"
+        )
+        image_buffer.seek(0)
+
+        with patch.object(webapp, "_get_classifier") as get_classifier:
+            get_classifier.return_value.predict.return_value = {
+                "main_category": "Unsupported or uncertain input",
+                "subclass": "Image does not appear to be a supported textile",
+                "confidence": 12.0,
+                "is_supported": False,
+                "reason": "non_textile",
+                "gate_confidence": 12.0,
+                "gate_threshold": 99.53,
+                "support_threshold": 99.53,
+            }
+            with patch.object(
+                webapp, "run_algorithm_i_autocorrelation"
+            ) as autocorrelation:
+                response = self.client.post(
+                    "/analyze",
+                    data={"image": (image_buffer, "portrait.png")},
+                    content_type="multipart/form-data",
+                )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn(b"does not appear to contain a textile, fabric", response.data)
+        self.assertIn(b"Upload a clear image of textile material", response.data)
+        self.assertNotIn(b"Textile screening score", response.data)
+        self.assertNotIn(b"required: 99.53%", response.data)
+        autocorrelation.assert_not_called()
+
+    def test_textile_with_uncertain_classification_still_runs_dsp(self):
+        textile_result = {
+            "main_category": "Textile or repeating pattern",
+            "subclass": "Specific type not identified",
+            "confidence": 54.0,
+            "is_supported": True,
+            "classification_supported": False,
+            "reason": "low_class_confidence",
+            "support_threshold": 80.0,
+        }
+        wallpaper_evidence = {
+            "operations": {
+                name: None
+                for name in ("mirror_h", "mirror_v", "rotation_180", "rotation_90")
+            },
+            "aspect_ratio": 1.0,
+            "is_square": True,
+            "tile_side": 128,
+            "search_radius": 8,
+            "search_step": 2,
+            "ncc_threshold": 0.8,
+            "vote_fraction_threshold": 0.6,
+            "decision_path": "test path",
+        }
+        rgb_image = np.full((256, 256, 3), 120, dtype=np.uint8)
+
+        with patch.object(webapp, "_classify_image", return_value=textile_result):
+            with patch.object(
+                webapp,
+                "run_algorithm_i_autocorrelation",
+                return_value=(None, 16.0, 16.0, None, "p1", wallpaper_evidence),
+            ):
+                with patch.object(
+                    webapp,
+                    "run_algorithm_ii_defect_isolation",
+                    return_value=(
+                        np.zeros((256, 256), dtype=np.uint8),
+                        np.zeros((256, 256), dtype=np.float32),
+                    ),
+                ) as defect_isolation:
+                    with patch.object(
+                        webapp,
+                        "run_algorithm_iii_template_alignment",
+                        return_value=np.zeros((256, 256, 3), dtype=np.uint8),
+                    ):
+                        with patch.object(
+                            webapp,
+                            "calculate_restoration_metrics",
+                            return_value=(99.0, 99.0, 90.0, 1.0, 80.0, 95.0),
+                        ):
+                            result = webapp._analyze_image(rgb_image)
+
+        defect_isolation.assert_called_once()
+        self.assertIn(
+            "Textile or repeating pattern accepted",
+            result["classification"]["text"],
+        )
+        self.assertEqual(
+            result["report"]["category"], "Textile or repeating pattern"
+        )
+
     def test_homepage_loads(self):
         response = self.client.get("/")
 
@@ -29,6 +124,13 @@ class WebAppTests(unittest.TestCase):
         self.assertNotIn(b"STEP 1 OF 5", response.data)
         self.assertNotIn(b"temporary result files expire after 30 minutes", response.data)
         self.assertIn(b"Analyze textile", response.data)
+        self.assertIn(b'id="capture-guidelines-title"', response.data)
+        self.assertIn(
+            b"Photograph the fabric straight-on", response.data
+        )
+        self.assertIn(b"Use bright, even lighting", response.data)
+        self.assertIn(b"include several intact pattern repeats", response.data)
+        self.assertIn(b"Zoomed-out photos are okay", response.data)
         self.assertIn(b"Mark damage the detector may miss", response.data)
         self.assertIn(b'data-damage-tool="erase"', response.data)
         self.assertIn(b"Educational Textile Reference Guide", response.data)

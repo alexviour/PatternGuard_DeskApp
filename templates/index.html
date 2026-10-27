@@ -47,8 +47,8 @@
         <p class="eyebrow">TEXTILE, MADE ACCESSIBLE</p>
         <h1>Understand and restore Filipino woven patterns.</h1>
         <p class="intro-copy">
-          Upload a Pinilian or Binakol textile image to identify its pattern,
-          inspect possible damage, and create a reconstruction report.
+          Upload a woven textile, fabric, or other repeating-pattern image
+          to inspect possible damage and create a reconstruction report.
         </p>
       </section>
 
@@ -64,9 +64,18 @@
               <div>
                 <p class="eyebrow">AUDIT &amp; INPUT</p>
                 <h2 id="upload-title" tabindex="-1">Start an audit</h2>
-                <p>Choose a clear photo of the textile pattern.</p>
+                <p>Choose a clear photo of woven textile, fabric, or a repeating pattern.</p>
               </div>
             </div>
+            <aside class="capture-guidelines" aria-labelledby="capture-guidelines-title">
+              <h3 id="capture-guidelines-title">Before you upload</h3>
+              <ul>
+                <li>Photograph the fabric straight-on, with the camera parallel to the textile.</li>
+                <li>Use bright, even lighting; avoid glare, shadows, filters, and blur.</li>
+                <li>Lay the fabric flat; include several intact pattern repeats when possible.</li>
+                <li>Zoomed-out photos are okay if the fabric and its repeating pattern are still clearly visible.</li>
+              </ul>
+            </aside>
             <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data">
               <label class="upload-drop" for="image">
                 <span class="upload-icon" aria-hidden="true">↑</span>
