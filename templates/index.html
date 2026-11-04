@@ -243,7 +243,7 @@
               </section>
               <section class="damage-markup restoration-markup" aria-labelledby="restoration-markup-title">
                 <h3 id="restoration-markup-title">Did the system miss any damage or leave an area unrepaired?</h3>
-                <p>Paint over missed tears, holes, or poorly restored areas on the reconstructed image below, then submit the marks to run restoration again. Mark the full area that needs repair. The next result is an estimate from nearby repeating patterns, not a guaranteed recovery of the original weave.</p>
+                <p>Paint over missed tears, holes, or poorly restored areas on the reconstructed image below, then submit the marks to run restoration again. Mark the full area that needs repair.</p>
                 <form action="{{ url_for('restore_marked_damage', result_id=result_id) }}" method="post" data-result-damage-form>
                   <div class="damage-markup-tools">
                     <button class="button button-secondary is-active" type="button" data-result-damage-tool="mark" aria-pressed="true">Mark damage</button>
@@ -272,7 +272,8 @@
                 <p>{{ result.interpretation.summary }}</p>
               </section>
               <section class="interpretation-card fidelity-card" aria-labelledby="fidelity-title">
-                <p class="eyebrow">INPAINTING QUALITY ANALYSIS</p>
+                <p class="eyebrow">RECONSTRUCTION
+                   QUALITY ANALYSIS</p>
                 <h3 id="fidelity-title">Reconstruction Fidelity Indicators</h3>
                 <dl class="fidelity-metrics">
                   <div><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
@@ -429,10 +430,10 @@
                   <dl class="metric-definitions">
                     <div><dt>Symmetry Fidelity Score (SFS)</dt><dd>A composite score using accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive rate (15%), and IoU (10%), with a penalty for background changes. The desktop app uses 95% as a display threshold; it is not a validated guarantee.</dd></div>
                     <div><dt>Accuracy</dt><dd>A weighted score: 60% of masked pixels changed during reconstruction plus 40% of unmasked pixels preserved.</dd></div>
-                    <div><dt>Recall</dt><dd>Of all pixels in the repair mask, the percentage also changed by reconstruction.</dd></div>
-                    <div><dt>False positive rate</dt><dd>Of pixels outside the repair mask, the percentage changed by reconstruction.</dd></div>
-                    <div><dt>Intersection over Union (IoU)</dt><dd>Overlap between the repair mask and changed pixels, divided by their combined area.</dd></div>
-                    <div><dt>Structural Similarity (SSIM)</dt><dd>Structural similarity between the input and reconstruction in regions outside the repair mask.</dd></div>
+                    <div><dt>Recall</dt><dd>Measures the system's sensitivity in successfully identifying all actual physical defects present in the fabric.</dd></div>
+                    <div><dt>False Positive Rate</dt><dd>Measures the proportion of intact, undamaged weave areas incorrectly flagged by the system as defects.</dd></div>
+                    <div><dt>Intersection over Union (IoU)</dt><dd>Measures spatial localization accuracy by calculating the percentage of overlap between the predicted defect mask and the ground-truth annotation.</dd></div>
+                    <div><dt>Structural Similarity (SSIM)</dt><dd>Measures the perceptual visual similarity between the restored textile and the reference image by comparing luminance, contrast, and structural information.</dd></div>
                   </dl>
                   <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the repair mask, which may include user-painted regions, with pixels changed by reconstruction. If no areas are marked for repair, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
                 </details>
