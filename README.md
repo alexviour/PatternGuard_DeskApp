@@ -261,26 +261,56 @@ The fit label is a heuristic based on train/validation accuracy and validation
 loss trends; the small validation sample is not a final independent test set
 and cannot establish real-world generalization by itself.
 
-## Deploying a free evaluation copy to Render
+## Deploying for respondent testing with Google Cloud Run
 
-The repository includes a Render Blueprint in `render.yaml`. To deploy:
+Cloud Run is a better fit than a free sleep-on-idle web host for a scheduled
+respondent session. Its free usage allowance is subject to Google's current
+pricing, region, account, and billing requirements. Billing must be enabled,
+and usage beyond the free allowance can be charged. Review
+[Cloud Run pricing](https://cloud.google.com/run/pricing) and configure a
+budget alert before inviting respondents.
 
-1. Push the project to GitHub, including the classifier model and reference
-   images used by the web app.
-2. In Render, create a **Blueprint** and connect the GitHub repository and the
-   branch you want to deploy.
-3. Review the Blueprint and create the service. Render will build the app and
-   provide a public `onrender.com` URL when deployment completes.
+The included `Dockerfile` installs CPU-only PyTorch and packages the app for
+Cloud Run. From a terminal with the Google Cloud CLI installed and authenticated:
 
-The Blueprint uses Render's free web-service plan for evaluation. Free
-services can spin down after inactivity, so the first request may take about a
-minute to wake up. Their filesystem is ephemeral, and CPU and memory are
-limited; the app therefore uses one Gunicorn worker. Analysis can be slow or
-fail if the free instance runs out of resources. Result links are held in
-process memory and expire after 30 minutes, so they are not durable.
+```powershell
+gcloud config set project YOUR_PROJECT_ID
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com
+gcloud run deploy patternguard `
+  --source . `
+  --region asia-southeast1 `
+  --allow-unauthenticated `
+  --port 8080 `
+  --memory 2Gi `
+  --cpu 1 `
+  --concurrency 4 `
+  --max 1 `
+  --min 1 `
+  --timeout 600
+```
 
-Use a paid service for dependable availability or sustained use. Before
-sharing publicly, confirm you have permission to publish all included textile
-images and model files, and consider abuse/rate protections for public uploads.
+Keep the single-instance limit while testing because audit results are stored
+in process memory. The app retains up to 25 results for two hours, enough for a
+20-respondent session, but results are lost if the instance restarts. Analysis
+requests are serialized by the app, so allow time for respondents' uploads to
+finish rather than having everyone submit at once. Keeping one minimum
+instance warm reduces cold starts during the session; it can incur charges
+while idle. After data collection, scale to zero to avoid idle-instance charges:
+
+```powershell
+gcloud run services update patternguard --region asia-southeast1 --min 0
+```
+
+The app is publicly accessible when deployed with `--allow-unauthenticated`.
+Share the URL only with intended respondents and review the privacy and
+consent requirements for any uploaded images.
+
+Render remains configured in `render.yaml` as an alternative. Its free web
+services can sleep when idle and have limited CPU and memory, so the first
+request may be slow and analysis may fail under resource pressure.
+
+Before sharing publicly, confirm you have permission to publish all included
+textile images and model files, and consider abuse/rate protections for public
+uploads.
 
 Run the original desktop application with `python main.py`.

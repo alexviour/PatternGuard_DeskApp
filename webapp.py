@@ -36,8 +36,8 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_IMAGE_PIXELS = 20_000_000
 MAX_DAMAGE_MASK_DATA_LENGTH = 1_000_000
 ANALYSIS_SIZE = (256, 256)
-MAX_CACHED_RESULTS = 5
-RESULT_TTL_SECONDS = 30 * 60
+MAX_CACHED_RESULTS = 25
+RESULT_TTL_SECONDS = 2 * 60 * 60
 WALLPAPER_GROUP_EXPLANATIONS = {
     "p1": "No non-trivial rotation or mirror symmetry was detected.",
     "p2": "The pattern shows 180-degree rotational symmetry.",
