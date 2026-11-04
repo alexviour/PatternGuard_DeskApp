@@ -602,9 +602,9 @@ class WebAppTests(unittest.TestCase):
             self.assertIn(f'data-step-panel="{step}"'.encode(), response.data)
             self.assertIn(f'data-go-step="{step}"'.encode(), response.data)
         for step_title in (
-            b"INTERPRETABLE RESULTS",
+            b"HEATMAP",
             b"RESTORED IMAGE",
-            b"CLASSIFICATION &amp; CONTEXT",
+            b"CLASSIFICATION &amp; CULTURAL CONTEXT",
             b"FINAL AUDIT METRICS",
             b'data-before-after',
             b'data-comparison-range',
