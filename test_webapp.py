@@ -16,6 +16,19 @@ class WebAppTests(unittest.TestCase):
         webapp.app.config.update(TESTING=True)
         self.client = webapp.app.test_client()
 
+    def test_result_cache_retains_twenty_respondent_results(self):
+        result_ids = []
+        try:
+            for _ in range(20):
+                result_ids.append(webapp._cache_result({}))
+
+            for result_id in result_ids:
+                self.assertIsNotNone(webapp._get_cached_result(result_id))
+        finally:
+            with webapp.RESULTS_LOCK:
+                for result_id in result_ids:
+                    webapp.RESULTS.pop(result_id, None)
+
     def test_non_textile_upload_is_rejected_before_dsp_processing(self):
         image_buffer = io.BytesIO()
         Image.new("RGB", (32, 32), color=(110, 80, 50)).save(
@@ -602,9 +615,9 @@ class WebAppTests(unittest.TestCase):
             self.assertIn(f'data-step-panel="{step}"'.encode(), response.data)
             self.assertIn(f'data-go-step="{step}"'.encode(), response.data)
         for step_title in (
-            b"INTERPRETABLE RESULTS",
+            b"HEATMAP",
             b"RESTORED IMAGE",
-            b"CLASSIFICATION &amp; CONTEXT",
+            b"CLASSIFICATION &amp; CULTURAL CONTEXT",
             b"FINAL AUDIT METRICS",
             b'data-before-after',
             b'data-comparison-range',
