@@ -1902,7 +1902,13 @@ class PatternGuardApp(tk.Tk):
         # 2. Update Wallpaper Group & SFS UI Labels
         group_str = str(detected_group) if detected_group else "N/A"
         if detected_group:
-            self.group_lbl.configure(text=f"Wallpaper Group: {group_str}")
+            if group_str == "uncertain":
+                label = "Wallpaper Group: classification uncertain"
+            elif group_str == "pmm/cmm":
+                label = "Wallpaper symmetry family: pmm/cmm (centering unresolved)"
+            else:
+                label = f"Wallpaper Group: {group_str}"
+            self.group_lbl.configure(text=label)
 
         if no_defect_detected:
             sfs_str = "N/A"

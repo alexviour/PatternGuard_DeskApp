@@ -297,7 +297,7 @@
                 <div>
                   <p class="eyebrow">SYMMETRY VECTOR ANNOTATIONS</p>
                   <h3 id="annotation-title">Estimated repeating lattice</h3>
-                  <p>Axes and centers are schematic group annotations, not fitted coordinates. Repeat vectors are estimated as <strong>a⃗₁ = (0, A1)</strong> and <strong>a⃗₂ = (A2, 0)</strong> in image (x, y) coordinates.</p>
+                  <p>Axes and centers are schematic group annotations, not fitted coordinates. Repeat vectors are estimated from autocorrelation peaks in image (x, y) coordinates.</p>
                 </div>
                 <div class="annotated-pattern">
                   <img src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Textile image with estimated symmetry annotations">
@@ -340,7 +340,7 @@
               <section class="symmetry-card" aria-labelledby="symmetry-title">
                 <div>
                   <p class="eyebrow">REPEATING-PATTERN SYMMETRY · WALLPAPER GROUP CLASSIFICATION</p>
-                  <h3 id="symmetry-title"><span class="status-badge">Planar group detected: {{ result.metrics.wallpaper_group }}</span></h3>
+                  <h3 id="symmetry-title"><span class="status-badge">{% if result.metrics.wallpaper_group == 'uncertain' %}Planar group classification uncertain{% elif result.metrics.wallpaper_group == 'pmm/cmm' %}Symmetry family: pmm/cmm (centering unresolved){% else %}Planar group detected: {{ result.metrics.wallpaper_group }}{% endif %}</span></h3>
                   <p>{{ result.interpretation.wallpaper_group }}</p>
                   <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
                 </div>
@@ -360,8 +360,8 @@
                 <ol class="pipeline-list proof-steps">
                   <li>
                     <strong>FFT autocorrelation → repeat vectors</strong>
-                    <span>F = FFT₂(I); R = |shift(IFFT₂(F · F*))|. The central 20 px are excluded; the strongest remaining peak gives A1 = |Δy| and A2 = |Δx|. If either is &lt; 15 px, that spacing is set to 48 px.</span>
-                    <code class="formula-line">a⃗₁ = (0, {{ result.metrics.a1 }}) px; a⃗₂ = ({{ result.metrics.a2 }}, 0) px; r = A1/A2 = {{ "%.3f"|format(result.wallpaper_evidence.aspect_ratio) }}</code>
+                    <span>F = FFT₂(I); R = |shift(IFFT₂(F · F*))|. Multiple off-center peaks are checked for two independent repeat directions. Lattice confidence: {{ (result.wallpaper_evidence.lattice_confidence * 100)|round|int }}%; {% if result.wallpaper_evidence.lattice_reliable %}the lattice passed the reliability check{% else %}the lattice did not pass the reliability check, so the group is uncertain{% endif %}.</span>
+                    <code class="formula-line">a⃗₁ = {{ result.wallpaper_evidence.a1_vector }}; a⃗₂ = {{ result.wallpaper_evidence.a2_vector }}; r = A1/A2 = {{ "%.3f"|format(result.wallpaper_evidence.aspect_ratio) }}</code>
                     <span>Candidate tile: {{ result.wallpaper_evidence.tile_side }} × {{ result.wallpaper_evidence.tile_side }} px; lattice branch: {{ "near-square" if result.wallpaper_evidence.is_square else "non-square" }} (|r − 1| &lt; 0.20 defines near-square).</span>
                   </li>
                   <li>

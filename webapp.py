@@ -39,6 +39,15 @@ ANALYSIS_SIZE = (256, 256)
 MAX_CACHED_RESULTS = 5
 RESULT_TTL_SECONDS = 30 * 60
 WALLPAPER_GROUP_EXPLANATIONS = {
+    "pmm/cmm": (
+        "Two-fold rotation and mirror symmetry were detected. The evidence "
+        "supports the pmm/cmm family, but lattice centering was not measured, "
+        "so the exact wallpaper group is unresolved."
+    ),
+    "uncertain": (
+        "The lattice or symmetry evidence was insufficient or inconsistent, "
+        "so no wallpaper group was assigned."
+    ),
     "p1": "No non-trivial rotation or mirror symmetry was detected.",
     "p2": "The pattern shows 180-degree rotational symmetry.",
     "pm": "The pattern shows mirror symmetry along at least one direction.",
@@ -648,11 +657,31 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
                 "passed": passed,
             }
         )
+    lattice_vectors = wallpaper_evidence.get("lattice", {}).get("vectors", [])
+    if len(lattice_vectors) == 2:
+        a1_vector = (
+            f"({lattice_vectors[0]['dx']}, {lattice_vectors[0]['dy']}) px"
+        )
+        a2_vector = (
+            f"({lattice_vectors[1]['dx']}, {lattice_vectors[1]['dy']}) px"
+        )
+    else:
+        a1_vector = f"(0, {a1:.1f}) px"
+        a2_vector = f"({a2:.1f}, 0) px"
     wallpaper_evidence_display = {
-        "a1_vector": f"(0, {a1:.1f}) px",
-        "a2_vector": f"({a2:.1f}, 0) px",
+        "classification_status": wallpaper_evidence.get(
+            "classification_status", "classified"
+        ),
+        "a1_vector": a1_vector,
+        "a2_vector": a2_vector,
         "aspect_ratio": wallpaper_evidence["aspect_ratio"],
         "is_square": wallpaper_evidence["is_square"],
+        "lattice_confidence": wallpaper_evidence.get("lattice", {}).get(
+            "confidence", 0.0
+        ),
+        "lattice_reliable": wallpaper_evidence.get("lattice", {}).get(
+            "reliable", False
+        ),
         "tile_side": wallpaper_evidence["tile_side"],
         "search_radius": wallpaper_evidence["search_radius"],
         "search_step": wallpaper_evidence["search_step"],
@@ -668,8 +697,12 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         f"A2 = {a2:.1f} pixels in the 256 × 256 analysis image. It classified "
         f"the wallpaper group as {group}: {wallpaper_explanation}\n\n"
         "Wallpaper-group decision trace: F = FFT2(I); R = "
-        "|fftshift(IFFT2(F × conjugate(F)))|. The central 20-pixel disk is "
-        "excluded before selecting the strongest autocorrelation peak. "
+        "|fftshift(IFFT2(F × conjugate(F)))|. Candidate lattice vectors are "
+        "estimated from multiple significant, non-collinear off-center "
+        "autocorrelation peaks; symmetry testing is skipped when their "
+        f"strength is insufficient. Lattice confidence is "
+        f"{wallpaper_evidence_display['lattice_confidence']:.0%}; "
+        f"lattice reliable: {wallpaper_evidence_display['lattice_reliable']}. "
         f"The estimated repeat vectors are a1 = {wallpaper_evidence_display['a1_vector']} "
         f"and a2 = {wallpaper_evidence_display['a2_vector']}; the ratio "
         f"a1/a2 = {wallpaper_evidence['aspect_ratio']:.3f} selects the "

@@ -406,6 +406,29 @@ def _system_component_evaluation(
         / len(group_rows)
         if group_rows else None
     )
+    group_confusion = {}
+    for actual, predicted in group_rows:
+        group_confusion.setdefault(actual, {})
+        group_confusion[actual][predicted] = (
+            group_confusion[actual].get(predicted, 0) + 1
+        )
+    uncertain_group_count = sum(
+        predicted == "uncertain" for _, predicted in group_rows
+    )
+    partial_group_count = sum(
+        predicted == "pmm/cmm" for _, predicted in group_rows
+    )
+    classified_group_rows = [
+        (actual, predicted)
+        for actual, predicted in group_rows
+        if predicted != "uncertain"
+    ]
+    selective_group_accuracy = (
+        100.0
+        * sum(actual == predicted for actual, predicted in classified_group_rows)
+        / len(classified_group_rows)
+        if classified_group_rows else None
+    )
     detector_summary = _aggregate_mask_metrics(
         damage_truth, damage_predictions
     )
@@ -422,6 +445,18 @@ def _system_component_evaluation(
         "wallpaper_group": {
             "case_count": len(group_rows),
             "metadata_agreement_percent": group_accuracy,
+            "classified_metadata_agreement_percent": selective_group_accuracy,
+            "uncertain_prediction_count": uncertain_group_count,
+            "uncertain_prediction_rate_percent": (
+                100.0 * uncertain_group_count / len(group_rows)
+                if group_rows else None
+            ),
+            "partial_prediction_count": partial_group_count,
+            "partial_prediction_rate_percent": (
+                100.0 * partial_group_count / len(group_rows)
+                if group_rows else None
+            ),
+            "confusion_matrix": group_confusion,
             "mean_inference_ms": statistics.mean(group_times),
             "ground_truth_warning": (
                 "Uses group strings in cultural_data.py; treat as provisional "

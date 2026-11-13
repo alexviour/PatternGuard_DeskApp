@@ -195,12 +195,14 @@ synthetic disk is a real textile defect.
 3. **FFT autocorrelation:** `run_algorithm_i_autocorrelation` computes the
    two-dimensional FFT, multiplies it by its complex conjugate, inverse
    transforms the power spectrum, and centers the autocorrelation map. It
-   suppresses the central peak to estimate horizontal and vertical repeat
-   spacing (`a1`, `a2`).
+   detects multiple off-center peaks to estimate two lattice vectors and
+   reports low-confidence or insufficient lattice evidence as uncertain.
 4. **Wallpaper-symmetry vote:** local tiles are compared with mirrored and
    rotated versions using normalized cross-correlation. Votes and tile aspect
-   ratio select a heuristic wallpaper-group label; this is a rule-based
-   estimate, not a learned or calibrated classifier.
+   ratio select a heuristic wallpaper-group label. Inconsistent votes and
+   groups that require unmeasured lattice-centering evidence are reported as
+   uncertain; this is a rule-based estimate, not a learned or calibrated
+   classifier.
 5. **Defect isolation:** `run_algorithm_ii_defect_isolation` applies a dark
    pixel threshold, compares grayscale pixels with a local box-filter mean,
    thresholds structural differences, then uses morphology to form a defect
