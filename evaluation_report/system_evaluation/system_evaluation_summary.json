@@ -1,0 +1,281 @@
+{
+  "evaluation": "system evaluation, separate from algorithm comparison",
+  "dataset": "C:\\Users\\63956\\.vscode-shared\\PatternGuard_DeskApp\\dataset",
+  "test_dataset": null,
+  "sfs_definition": {
+    "name": "Ground-truth System Fidelity Score (SFS)",
+    "formula": "0.35 * Restoration accuracy + 0.25 * SSIM + 0.15 * Recall + 0.15 * Specificity + 0.10 * IoU",
+    "inputs": "Clean source image and synthetic ground-truth damage mask; the separately predicted detector mask is used for Recall, Specificity, and IoU.",
+    "component_rationale": [
+      "Restoration accuracy (35%): largest single weight; 60% of this component is the fraction of damaged grayscale pixels reconstructed within 12 intensity levels of the clean source, and 40% is the fraction of undamaged pixels preserved within that tolerance.",
+      "SSIM (25%): clean-region structural similarity against the clean source, using the 0-255 image range.",
+      "Recall (15%): sensitivity to ground-truth damaged pixels.",
+      "Specificity (15%): one minus the false-positive rate on ground-truth clean pixels, balancing missed damage against false alarms.",
+      "IoU (10%): spatial overlap of predicted and ground-truth damage regions, penalizing both false positives and false negatives."
+    ],
+    "aggregation": "Calculate every component and SFS per synthetic damage case, then report the unweighted arithmetic mean across cases. The separately reported pooled IoU aggregates pixels globally.",
+    "project_target_percent": 95.0,
+    "interpretation": "Weights are project-defined and not empirically calibrated. SFS is an overall system composite; without expert symmetry labels it is not a validated measure of symmetry fidelity. The 95.00% value is a project target, not an independently validated threshold."
+  },
+  "evaluation_protocol": {
+    "source_image_count": 170,
+    "damage_variants_per_source": 6,
+    "synthetic_damage_case_count": 1020,
+    "source_selection": "all dataset images",
+    "image_size": "256x256"
+  },
+  "classification": {
+    "training_dataset_diagnostic": {
+      "sample_count": 170,
+      "accuracy_percent": 94.11764705882354,
+      "precision_macro_percent": 94.7107438016529,
+      "recall_macro_percent": 96.28004179728318,
+      "f1_macro_percent": 94.73108425918417,
+      "confusion_matrix": [
+        [
+          9,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          9,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          6,
+          21,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          18,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          19,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          8,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          29,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          17
+        ]
+      ],
+      "mean_confidence_percent": 98.74662409810459,
+      "median_inference_ms": 18.227200023829937,
+      "class_names": [
+        "binakol_concha_concha",
+        "binakol_kinkinelleng",
+        "binakol_kulalabang",
+        "binakol_kusikus",
+        "binakol_paddak_ti_pusa",
+        "pinilian_sinan_agatul",
+        "pinilian_sinan_bayabas",
+        "pinilian_sinan_bituwon",
+        "pinilian_sinan_init",
+        "pinilian_sinan_kabalyo",
+        "pinilian_sinan_sabong"
+      ]
+    },
+    "warning": "The checkpoint was trained using the repository dataset and contains no split or fit history. These results are in-sample diagnostics, not test/generalization accuracy.",
+    "held_out_test": null,
+    "fit_diagnostics": {
+      "status": "not_assessable",
+      "reason": "No independent held-out set was supplied and the checkpoint does not include train/validation loss or accuracy history."
+    }
+  },
+  "wallpaper_group": {
+    "case_count": 170,
+    "metadata_agreement_percent": 2.9411764705882355,
+    "mean_inference_ms": 425.7475858732291,
+    "ground_truth_warning": "Uses group strings in cultural_data.py; treat as provisional metadata, not expert-verified reference annotations."
+  },
+  "defect_detection": {
+    "pixel_accuracy_percent": 98.78682155235141,
+    "balanced_accuracy_percent": 99.38174587092358,
+    "precision_percent": 60.8642988128559,
+    "recall_percent": 100.0,
+    "false_positive_rate_percent": 1.2365082581528324,
+    "iou_percent": 60.8642988128559,
+    "mean_case_iou_percent": 83.7426284221672,
+    "true_positive_pixels": 1261230,
+    "false_positive_pixels": 810970,
+    "false_negative_pixels": 0,
+    "true_negative_pixels": 64774520,
+    "case_count": 1020,
+    "mean_detection_ms": 0.659519901690895
+  },
+  "dsp_restoration": {
+    "ssim_percent": 98.32016081786624,
+    "restoration_accuracy_percent": 73.89134105762757,
+    "defect_recall_percent": 100.0,
+    "defect_fpr_percent": 1.2365802519906106,
+    "defect_iou_percent": 83.7426284221672,
+    "sfs_percent": 88.63078537905433,
+    "legacy_sfs_percent": 88.30868044319834,
+    "mae_full": 1.3163256892295299,
+    "mae_masked": 19.90122468775394,
+    "psnr_full_db": 36.87056239538491,
+    "defect_detection_ms": 0.659519901690895,
+    "restoration_ms": 93.81035294283328,
+    "case_count": 1020,
+    "sfs_weighted_component_check_percent": 88.63078537905434,
+    "sfs_components": [
+      {
+        "component": "Restoration accuracy",
+        "weight_percent": 35.0,
+        "mean_percent": 73.89134105762757,
+        "weighted_contribution_points": 25.86196937016965
+      },
+      {
+        "component": "SSIM",
+        "weight_percent": 25.0,
+        "mean_percent": 98.32016081786624,
+        "weighted_contribution_points": 24.58004020446656
+      },
+      {
+        "component": "Recall",
+        "weight_percent": 15.0,
+        "mean_percent": 100.0,
+        "weighted_contribution_points": 15.0
+      },
+      {
+        "component": "Specificity",
+        "weight_percent": 15.0,
+        "mean_percent": 98.76341974800938,
+        "weighted_contribution_points": 14.814512962201407
+      },
+      {
+        "component": "IoU",
+        "weight_percent": 10.0,
+        "mean_percent": 83.7426284221672,
+        "weighted_contribution_points": 8.374262842216721
+      }
+    ]
+  },
+  "methodology_limits": [
+    "Classification on the repository dataset is resubstitution only.",
+    "Wallpaper-group agreement uses unverified cultural_data.py labels.",
+    "Detector and restoration tests use six synthetic disk, scratch, and tear variants.",
+    "The detector's dark-pixel threshold is calibrated to the generated synthetic mark intensities; results do not establish sensitivity to naturally occurring or differently colored damage.",
+    "SFS component weights are project-defined rather than empirically calibrated.",
+    "A below-target SFS reflects the weighted contribution of all components; restoration accuracy and IoU are inspected separately.",
+    "The 95.00% SFS target is project-defined and has not been independently validated.",
+    "Synthetic results do not establish performance on naturally damaged textiles."
+  ]
+}

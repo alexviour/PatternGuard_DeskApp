@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 import threading
 import shutil
@@ -1804,14 +1804,7 @@ class PatternGuardApp(tk.Tk):
             res = calculate_restoration_metrics(
                 I_gray_eval, I_final_gray, M_mask, None
             )
-            (
-                ssim_val,
-                accuracy_val,
-                recall_val,
-                fpr_val,
-                iou_val,
-                sfs_score,
-            ) = res if res else (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+            ssim_val = res[0] if res else 0.0
 
             color_heatmap = cv2.applyColorMap(
                 cv2.normalize(diff_map, None, 0, 255, cv2.NORM_MINMAX).astype(
@@ -1842,12 +1835,7 @@ class PatternGuardApp(tk.Tk):
                     recon_pil,
                     recon_hires,
                     heatmap_hires,
-                    sfs_score,
                     ssim_val,
-                    accuracy_val,
-                    recall_val,
-                    fpr_val,
-                    iou_val,
                     a1,
                     a2,
                     theta_dom,
@@ -1868,12 +1856,7 @@ class PatternGuardApp(tk.Tk):
             recon_pil,
             recon_hires,
             heatmap_hires,
-            sfs_score,
             ssim_val,
-            accuracy_val,
-            recall_val,
-            fpr_val,
-            iou_val,
             a1,
             a2,
             theta_dom,
@@ -1902,29 +1885,27 @@ class PatternGuardApp(tk.Tk):
         # 2. Update Wallpaper Group & SFS UI Labels
         group_str = str(detected_group) if detected_group else "N/A"
         if detected_group:
-            self.group_lbl.configure(text=f"Wallpaper Group: {group_str}")
+            if group_str == "uncertain":
+                label = "Wallpaper Group: classification uncertain"
+            elif group_str == "pmm/cmm":
+                label = "Wallpaper symmetry family: pmm/cmm (centering unresolved)"
+            else:
+                label = f"Wallpaper Group: {group_str}"
+            self.group_lbl.configure(text=label)
 
-        if no_defect_detected:
-            sfs_str = "N/A"
-            self.sfs_num_lbl.configure(
-                text=sfs_str, fg=self.colors["text_grey"]
-            )
-            self.draw_progress_bar(0)
-        else:
-            sfs_str = f"{sfs_score:.2f}%"
-            self.draw_progress_bar(sfs_score)
-            self.sfs_num_lbl.configure(
-                text=sfs_str,
-                fg=(
-                    self.colors["maroon"]
-                    if sfs_score < 95.0
-                    else self.colors["text_primary"]
-                ),
-            )
+        sfs_str = "N/A"
+        self.sfs_num_lbl.configure(
+            text=sfs_str, fg=self.colors["text_grey"]
+        )
+        self.draw_progress_bar(0)
 
         # 3. Update Metric Grid Widgets
+        accuracy_str = "N/A"
+        recall_str = "N/A"
+        fpr_str = "N/A"
+        iou_str = "N/A"
         self.box_acc.num_lbl.configure(
-            text=f"{accuracy_val:.1f}%", fg=self.colors["text_primary"]
+            text=accuracy_str, fg=self.colors["text_grey"]
         )
         self.box_rec.num_lbl.configure(
             text=f"{a1:.1f}", fg=self.colors["text_primary"]
@@ -1933,11 +1914,11 @@ class PatternGuardApp(tk.Tk):
             text=f"{a2:.1f}", fg=self.colors["text_primary"]
         )
 
-        self.grid_acc.val_lbl.configure(text=f"{accuracy_val:.1f}%")
-        self.grid_rec.val_lbl.configure(text=f"{recall_val:.1f}%")
-        self.grid_fpr.val_lbl.configure(text=f"{fpr_val:.1f}%")
-        self.grid_iou.val_lbl.configure(text=f"{iou_val:.1f}%")
-        self.grid_ssim.val_lbl.configure(text=f"{ssim_val:.1f}%")
+        self.grid_acc.val_lbl.configure(text=accuracy_str)
+        self.grid_rec.val_lbl.configure(text=recall_str)
+        self.grid_fpr.val_lbl.configure(text=fpr_str)
+        self.grid_iou.val_lbl.configure(text=iou_str)
+        self.grid_ssim.val_lbl.configure(text=f"{ssim_val:.2f}%")
 
         # Enable export buttons safely
         if hasattr(self, "export_btn"):
@@ -2026,12 +2007,17 @@ class PatternGuardApp(tk.Tk):
                 f"3) Repair: Based on Exemplar healthy patches matching the textile's symmetry are copied over damaged zones "
                 f"with feathered edge-blending to prevent halos, using a Telea inpainting fallback for any leftover gaps.\n\n"
                 f"Key outputs:\n"
-                f" - SSIM (clean areas): {ssim_val:.2f}%\n"
+                f" - SSIM (input/reconstruction similarity): {ssim_val:.2f}%\n"
                 f" - Symmetry Fidelity Score (SFS): {sfs_str}\n"
-                f" - Accuracy (repair + clean preservation): {accuracy_val:.2f}%\n"
-                f" - Recall (defect coverage): {recall_val:.2f}%\n"
-                f" - False Positive Rate (unintended fabric alterations): {fpr_val:.2f}%\n"
-                f" - IoU (mask alignment): {iou_val:.2f}%\n\n"
+                f" - Accuracy: {accuracy_str}\n"
+                f" - Recall: {recall_str}\n"
+                f" - False Positive Rate: {fpr_str}\n"
+                f" - IoU: {iou_str}\n\n"
+                f"Accuracy, MAE, and PSNR require a clean reference image. "
+                f"Recall, false positive rate, and IoU require a complete "
+                f"ground-truth damage mask; neither is available for this live upload. "
+                f"User-painted marks are repair guidance, not complete "
+                f"evaluation labels. SFS is therefore unavailable.\n\n"
                 f"Processing time: {runtime_ms:.0f} ms\n\n"
                 f"Simple Interpretation: Higher SFS/SSIM means the repaired image preserves the original fabric appearance; "
                 f"low FPR means healthy fabric was not changed.\n"
@@ -2066,11 +2052,11 @@ class PatternGuardApp(tk.Tk):
             "wallpaper_group": group_str,
             "a1_vector": f"{a1:.1f}",
             "a2_vector": f"{a2:.1f}",
-            "accuracy": f"{accuracy_val:.1f}%",
-            "recall": f"{recall_val:.1f}%",
-            "fpr": f"{fpr_val:.1f}%",
-            "iou": f"{iou_val:.1f}%",
-            "ssim": f"{ssim_val:.1f}%",
+            "accuracy": accuracy_str,
+            "recall": recall_str,
+            "fpr": fpr_str,
+            "iou": iou_str,
+            "ssim": f"{ssim_val:.2f}%",
             "classification_category": category,
             "classification_subclass": subclass,
             "classification_confidence": (

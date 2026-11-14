@@ -4,7 +4,10 @@ import cv2
 import numpy as np
 
 from benchmark_restoration import (
+    BenchmarkCase,
     DAMAGE_VARIANTS,
+    _measure_method,
+    _metric_summary,
     _make_damaged_case,
     _patchmatch_inpaint,
 )
@@ -71,6 +74,39 @@ class TestPatchMatchInpainting(unittest.TestCase):
             np.count_nonzero(masks["tear_small"]),
             np.count_nonzero(masks["tear_large"]),
         )
+
+
+class TestRestorationBenchmarkMetrics(unittest.TestCase):
+    def test_restoration_only_benchmark_does_not_report_detector_scores(self):
+        clean = np.full((32, 32, 3), 120, dtype=np.uint8)
+        damaged = clean.copy()
+        mask = np.zeros((32, 32), dtype=np.uint8)
+        mask[12:20, 12:20] = 255
+        damaged[mask > 0] = 0
+        case = BenchmarkCase(
+            textile="test",
+            source_image="sample.png",
+            damage="disk_small",
+            clean_image=clean,
+            damaged_image=damaged,
+            damage_mask=mask,
+            a1=16.0,
+            a2=16.0,
+        )
+
+        result = _measure_method(
+            "identity",
+            lambda *_args: clean.copy(),
+            case,
+        )
+        summary = _metric_summary([result])
+
+        self.assertEqual(result.accuracy, 100.0)
+        self.assertIsNone(result.recall)
+        self.assertIsNone(result.fpr)
+        self.assertIsNone(result.iou)
+        self.assertIsNone(result.sfs)
+        self.assertIsNone(summary["median_iou"])
 
 
 if __name__ == "__main__":

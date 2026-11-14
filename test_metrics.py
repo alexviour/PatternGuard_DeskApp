@@ -1,7 +1,10 @@
 import unittest
 
 import numpy as np
-from evaluation_metrics import calculate_restoration_metrics
+from evaluation_metrics import (
+    calculate_reference_free_metrics,
+    calculate_restoration_metrics,
+)
 
 
 class TestIoUMaskThreshold(unittest.TestCase):
@@ -20,6 +23,14 @@ class TestIoUMaskThreshold(unittest.TestCase):
         )
 
         self.assertAlmostEqual(metrics[4], 16 / 17 * 100)
+
+    def test_detector_metrics_are_unavailable_without_predicted_mask(self):
+        metrics = calculate_restoration_metrics(
+            self.image, self.image, self.truth
+        )
+
+        self.assertEqual(metrics[:2], (100.0, 100.0))
+        self.assertEqual(metrics[2:], (None, None, None, None))
 
     def test_custom_threshold_excludes_weak_gray_pixels(self):
         predicted = self.truth.copy()
@@ -52,6 +63,138 @@ class TestIoUMaskThreshold(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "M_predicted"):
             calculate_restoration_metrics(
                 self.image, self.image, self.truth, np.zeros((8, 8), dtype=np.uint8)
+            )
+
+    def test_exact_repair_receives_full_repair_accuracy(self):
+        clean = np.full((16, 16), 120, dtype=np.uint8)
+
+        metrics = calculate_restoration_metrics(
+            clean,
+            clean,
+            self.truth,
+            self.truth,
+        )
+
+        self.assertEqual(metrics[1], 100.0)
+        self.assertEqual(metrics[5], 100.0)
+
+    def test_change_at_the_inclusive_threshold_counts_as_reconstructed(self):
+        clean = np.full((16, 16), 120, dtype=np.uint8)
+        reconstructed = clean.copy()
+        reconstructed[self.truth > 0] += 12
+
+        metrics = calculate_restoration_metrics(
+            clean,
+            reconstructed,
+            self.truth,
+            self.truth,
+        )
+
+        self.assertEqual(metrics[1], 100.0)
+
+    def test_ssim_percentage_uses_zero_to_one_scale(self):
+        clean = np.tile(
+            np.array([0, 255], dtype=np.uint8),
+            (32, 16),
+        )
+        inverted = 255 - clean
+
+        metrics = calculate_restoration_metrics(
+            clean,
+            inverted,
+            np.zeros_like(clean),
+            np.zeros_like(clean),
+        )
+
+        self.assertEqual(metrics[0], 0.0)
+
+    def test_bad_repair_does_not_count_as_reconstructed(self):
+        clean = np.full((16, 16), 120, dtype=np.uint8)
+        reconstructed = clean.copy()
+        reconstructed[self.truth > 0] = 0
+
+        metrics = calculate_restoration_metrics(
+            clean,
+            reconstructed,
+            self.truth,
+            self.truth,
+        )
+
+        self.assertLess(metrics[1], 100.0)
+        self.assertLess(metrics[5], 100.0)
+
+    def test_sfs_is_weighted_components_without_additional_penalty(self):
+        clean = np.full((16, 16), 120, dtype=np.uint8)
+        reconstructed = clean.copy()
+        reconstructed[self.truth == 0] = 145
+
+        metrics = calculate_restoration_metrics(
+            clean,
+            reconstructed,
+            self.truth,
+            self.truth,
+        )
+        ssim, accuracy, recall, fpr, iou, sfs = metrics
+        expected = (
+            0.35 * accuracy
+            + 0.25 * ssim
+            + 0.15 * recall
+            + 0.15 * (100.0 - fpr)
+            + 0.10 * iou
+        )
+
+        self.assertAlmostEqual(sfs, expected)
+
+
+class TestReferenceFreeMetrics(unittest.TestCase):
+    def setUp(self):
+        y, x = np.indices((32, 32))
+        pattern = (((x % 8) < 4) * 150 + ((y % 8) < 4) * 60).astype(
+            np.uint8
+        )
+        self.image = np.stack((pattern, pattern, pattern), axis=2)
+        self.mask = np.zeros((32, 32), dtype=np.uint8)
+        self.mask[12:20, 12:20] = 255
+
+    def test_reference_free_components_and_score_are_available_for_repair(self):
+        metrics = calculate_reference_free_metrics(
+            self.image, self.image, self.mask, 100.0
+        )
+
+        self.assertEqual(metrics["outside_preservation"], 100.0)
+        self.assertIsNotNone(metrics["boundary_continuity"])
+        self.assertEqual(metrics["ssim"], 100.0)
+        self.assertIsNotNone(metrics["estimated_sfs"])
+        self.assertGreaterEqual(metrics["estimated_sfs"], 0.0)
+        self.assertLessEqual(metrics["estimated_sfs"], 100.0)
+        self.assertAlmostEqual(
+            metrics["estimated_sfs"],
+            (
+                metrics["outside_preservation"]
+                + metrics["boundary_continuity"]
+                + metrics["ssim"]
+            )
+            / 3.0,
+        )
+
+    def test_no_repair_returns_no_reference_free_composite(self):
+        metrics = calculate_reference_free_metrics(
+            self.image,
+            self.image,
+            np.zeros_like(self.mask),
+            100.0,
+        )
+
+        self.assertIsNone(metrics["estimated_sfs"])
+        self.assertIsNone(metrics["outside_preservation"])
+
+    def test_reference_free_metrics_reject_mismatched_mask(self):
+        with self.assertRaisesRegex(ValueError, "M_repair"):
+            calculate_reference_free_metrics(
+                self.image,
+                self.image,
+                np.zeros((16, 16), dtype=np.uint8),
+                100.0,
             )
 
 

@@ -11,9 +11,9 @@ synthetic masks, and passes the same known mask to all three methods.
 Consequently, it evaluates restoration quality, not defect detection quality.
 
 The system's calculate_restoration_metrics function is also applied to each
-restored result to report SSIM, Accuracy, Recall, FPR, IoU, and SFS. Its
-predicted defect mask is inferred from pixels changed by restoration; it is
-not an independently detected mask.
+restored result against the clean reference to report SSIM and restoration
+Accuracy. Detection metrics and SFS are unavailable because this benchmark
+passes the known damage mask directly to each restoration method.
 
 The restoration timings exclude image loading, synthetic damage generation,
 and DSP repeat-spacing estimation. Repeat spacing is computed once per test
@@ -106,10 +106,10 @@ class CaseResult:
     psnr_db: float
     ssim: float
     accuracy: float
-    recall: float
-    fpr: float
-    iou: float
-    sfs: float
+    recall: float | None
+    fpr: float | None
+    iou: float | None
+    sfs: float | None
     median_ms: float
 
 
@@ -465,8 +465,8 @@ def _measure_method(
         restored_image,
         case.damage_mask,
     )
-    damaged_gray = cv2.cvtColor(
-        case.damaged_image,
+    clean_gray = cv2.cvtColor(
+        case.clean_image,
         cv2.COLOR_BGR2GRAY,
     )
     restored_gray = cv2.cvtColor(
@@ -475,7 +475,7 @@ def _measure_method(
     )
     ssim_value, accuracy, recall, fpr, iou, sfs = (
         calculate_restoration_metrics(
-            damaged_gray,
+            clean_gray,
             restored_gray,
             case.damage_mask,
         )
@@ -498,11 +498,16 @@ def _measure_method(
     )
 
 
+def _median_or_none(values: list[float | None]) -> float | None:
+    available = [value for value in values if value is not None]
+    return float(statistics.median(available)) if available else None
+
+
 def _summarize(
     results: list[CaseResult],
     method_names: list[str],
     cases: list[BenchmarkCase],
-) -> list[dict[str, float | int | str]]:
+) -> list[dict[str, float | int | str | None]]:
     summaries = []
     case_keys = {
         (result.textile, result.source_image, result.damage)
@@ -577,17 +582,17 @@ def _summarize(
                         result.accuracy for result in method_results
                     )
                 ),
-                "median_recall": float(
-                    statistics.median(result.recall for result in method_results)
+                "median_recall": _median_or_none(
+                    [result.recall for result in method_results]
                 ),
-                "median_fpr": float(
-                    statistics.median(result.fpr for result in method_results)
+                "median_fpr": _median_or_none(
+                    [result.fpr for result in method_results]
                 ),
-                "median_iou": float(
-                    statistics.median(result.iou for result in method_results)
+                "median_iou": _median_or_none(
+                    [result.iou for result in method_results]
                 ),
-                "median_sfs": float(
-                    statistics.median(result.sfs for result in method_results)
+                "median_sfs": _median_or_none(
+                    [result.sfs for result in method_results]
                 ),
                 "median_time_ms": float(
                     statistics.median(
@@ -601,7 +606,9 @@ def _summarize(
     return summaries
 
 
-def _metric_summary(results: list[CaseResult]) -> dict[str, float]:
+def _metric_summary(
+    results: list[CaseResult],
+) -> dict[str, float | None]:
     if not results:
         raise ValueError("Cannot summarize an empty result set")
 
@@ -636,15 +643,11 @@ def _metric_summary(results: list[CaseResult]) -> dict[str, float]:
         "median_accuracy": float(
             statistics.median(result.accuracy for result in results)
         ),
-        "median_recall": float(
-            statistics.median(result.recall for result in results)
+        "median_recall": _median_or_none(
+            [result.recall for result in results]
         ),
-        "median_fpr": float(
-            statistics.median(result.fpr for result in results)
-        ),
-        "median_iou": float(
-            statistics.median(result.iou for result in results)
-        ),
+        "median_fpr": _median_or_none([result.fpr for result in results]),
+        "median_iou": _median_or_none([result.iou for result in results]),
     }
 
 
@@ -763,6 +766,12 @@ def _write_summary_json(
             "primary_metrics": (
                 "Masked RGB MAE and PSNR over known synthetic defect pixels"
             ),
+            "detector_metrics": (
+                "Not evaluated: this restoration benchmark supplies the known "
+                "mask directly to each restoration method."
+            ),
+            "warmup_runs_per_method_case": WARMUP_RUNS,
+            "timed_runs_per_method_case": TIMED_RUNS,
         },
         "overall": method_summaries,
         "by_damage_type": per_damage,
@@ -839,10 +848,13 @@ def _write_csv(
                     f"{result.psnr_db:.6f}",
                     f"{result.ssim:.6f}",
                     f"{result.accuracy:.6f}",
-                    f"{result.recall:.6f}",
-                    f"{result.fpr:.6f}",
-                    f"{result.iou:.6f}",
-                    f"{result.sfs:.6f}",
+                    (
+                        f"{result.recall:.6f}"
+                        if result.recall is not None else "N/A"
+                    ),
+                    f"{result.fpr:.6f}" if result.fpr is not None else "N/A",
+                    f"{result.iou:.6f}" if result.iou is not None else "N/A",
+                    f"{result.sfs:.6f}" if result.sfs is not None else "N/A",
                     f"{result.median_ms:.6f}",
                 )
             )
@@ -905,9 +917,15 @@ def main() -> int:
         parser.error(f"No PNG textile images found in {args.dataset}")
     methods = _restoration_methods()
     results = []
-    for case in cases:
+    for case_index, case in enumerate(cases, start=1):
         for method_name, restore in methods.items():
             results.append(_measure_method(method_name, restore, case))
+        if case_index == len(cases) or case_index % 100 == 0:
+            print(
+                f"Completed {case_index}/{len(cases)} paired cases "
+                f"({len(results)} method-case evaluations)",
+                flush=True,
+            )
 
     summaries = _summarize(results, list(methods), cases)
     _write_csv(args.csv, results, cases)
@@ -932,19 +950,20 @@ def main() -> int:
     )
     print(
         f"Timing: {args.warmup_runs} warm-ups + {args.timed_runs} timed runs per "
-        "method and case; restoration stage only"
+        "method and case; restoration stage only. Per-case timing medians "
+        "are summarized across the full dataset."
     )
     print(
         "MAE/PSNR use masked RGB samples against the clean reference; "
-        "SFS metrics follow calculate_restoration_metrics using the damaged "
-        "input, restored output, and known mask. The predicted mask is "
-        "inferred from restoration changes, not independently detected."
+        "SSIM and restoration accuracy use the clean reference. Recall, FPR, "
+        "IoU, and SFS are N/A because this restoration-only benchmark gives "
+        "each method the known damage mask instead of evaluating a detector."
     )
     print()
     print(
         "Primary reconstruction metrics are masked RGB MAE (lower is better) "
-        "and PSNR (higher is better); accuracy/recall are restoration-change "
-        "metrics and are not used to choose the winner."
+        "and PSNR (higher is better); secondary accuracy/recall metrics are "
+        "not used to choose the winner."
     )
     print()
     print(
@@ -959,10 +978,10 @@ def main() -> int:
             f"{summary['aggregate_psnr_db']:>8.3f} "
             f"{summary['median_ssim']:>8.2f} "
             f"{summary['median_accuracy']:>10.2f} "
-            f"{summary['median_recall']:>9.2f} "
-            f"{summary['median_fpr']:>8.2f} "
-            f"{summary['median_iou']:>8.2f} "
-            f"{summary['median_sfs']:>8.2f} "
+            f"{summary['median_recall'] if summary['median_recall'] is not None else 'N/A':>9} "
+            f"{summary['median_fpr'] if summary['median_fpr'] is not None else 'N/A':>8} "
+            f"{summary['median_iou'] if summary['median_iou'] is not None else 'N/A':>8} "
+            f"{summary['median_sfs'] if summary['median_sfs'] is not None else 'N/A':>8} "
             f"{summary['median_time_ms']:>10.3f}"
         )
     print()

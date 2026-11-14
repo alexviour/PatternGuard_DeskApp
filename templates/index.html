@@ -274,13 +274,10 @@
               <section class="interpretation-card fidelity-card" aria-labelledby="fidelity-title">
                 <p class="eyebrow">RECONSTRUCTION
                    QUALITY ANALYSIS</p>
-                <h3 id="fidelity-title">Reconstruction Fidelity Indicators</h3>
+                <h3 id="fidelity-title">Estimated SFS (reference-free)</h3>
                 <dl class="fidelity-metrics">
-                  <div><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd></div>
-                  <div><dt>SSIM on unmasked regions</dt><dd>{{ result.metrics.ssim }}</dd></div>
-                  <div><dt>Reconstruction accuracy</dt><dd>{{ result.metrics.accuracy }}</dd></div>
+                  <div><dt>Estimated SFS (reference-free)</dt><dd>{{ result.metrics.sfs }}</dd></div>
                 </dl>
-                <p>These pipeline-derived indicators are not comparisons against independent ground-truth damage labels.</p>
               </section>
               <div class="wizard-actions">
                 <button class="button button-secondary" type="button" data-previous>Previous</button>
@@ -297,7 +294,7 @@
                 <div>
                   <p class="eyebrow">SYMMETRY VECTOR ANNOTATIONS</p>
                   <h3 id="annotation-title">Estimated repeating lattice</h3>
-                  <p>Axes and centers are schematic group annotations, not fitted coordinates. Repeat vectors are estimated as <strong>a⃗₁ = (0, A1)</strong> and <strong>a⃗₂ = (A2, 0)</strong> in image (x, y) coordinates.</p>
+                  <p>Axes and centers are schematic group annotations, not fitted coordinates. Repeat vectors are estimated from autocorrelation peaks in image (x, y) coordinates.</p>
                 </div>
                 <div class="annotated-pattern">
                   <img src="{{ url_for('result_image', result_id=result_id, name='original') }}" alt="Textile image with estimated symmetry annotations">
@@ -340,7 +337,7 @@
               <section class="symmetry-card" aria-labelledby="symmetry-title">
                 <div>
                   <p class="eyebrow">REPEATING-PATTERN SYMMETRY · WALLPAPER GROUP CLASSIFICATION</p>
-                  <h3 id="symmetry-title"><span class="status-badge">Planar group detected: {{ result.metrics.wallpaper_group }}</span></h3>
+                  <h3 id="symmetry-title"><span class="status-badge">{% if result.metrics.wallpaper_group == 'uncertain' %}Planar group classification uncertain{% elif result.metrics.wallpaper_group == 'pmm/cmm' %}Symmetry family: pmm/cmm (centering unresolved){% else %}Planar group detected: {{ result.metrics.wallpaper_group }}{% endif %}</span></h3>
                   <p>{{ result.interpretation.wallpaper_group }}</p>
                   <a class="guide-link" href="#wallpaper-guide">Open wallpaper-group chart ↓</a>
                 </div>
@@ -360,8 +357,8 @@
                 <ol class="pipeline-list proof-steps">
                   <li>
                     <strong>FFT autocorrelation → repeat vectors</strong>
-                    <span>F = FFT₂(I); R = |shift(IFFT₂(F · F*))|. The central 20 px are excluded; the strongest remaining peak gives A1 = |Δy| and A2 = |Δx|. If either is &lt; 15 px, that spacing is set to 48 px.</span>
-                    <code class="formula-line">a⃗₁ = (0, {{ result.metrics.a1 }}) px; a⃗₂ = ({{ result.metrics.a2 }}, 0) px; r = A1/A2 = {{ "%.3f"|format(result.wallpaper_evidence.aspect_ratio) }}</code>
+                    <span>F = FFT₂(I); R = |shift(IFFT₂(F · F*))|. Multiple off-center peaks are checked for two independent repeat directions. Lattice confidence: {{ (result.wallpaper_evidence.lattice_confidence * 100)|round|int }}%; {% if result.wallpaper_evidence.lattice_reliable %}the lattice passed the reliability check{% else %}the lattice did not pass the reliability check, so the group is uncertain{% endif %}.</span>
+                    <code class="formula-line">a⃗₁ = {{ result.wallpaper_evidence.a1_vector }}; a⃗₂ = {{ result.wallpaper_evidence.a2_vector }}; r = A1/A2 = {{ "%.3f"|format(result.wallpaper_evidence.aspect_ratio) }}</code>
                     <span>Candidate tile: {{ result.wallpaper_evidence.tile_side }} × {{ result.wallpaper_evidence.tile_side }} px; lattice branch: {{ "near-square" if result.wallpaper_evidence.is_square else "non-square" }} (|r − 1| &lt; 0.20 defines near-square).</span>
                   </li>
                   <li>
@@ -412,31 +409,13 @@
                 <div class="card-heading">
                   <div>
                     <p class="eyebrow">PATTERN &amp; RESTORATION</p>
-                    <h3 id="metrics-title">Audit metrics</h3>
+                    <h3 id="metrics-title">Estimated Symmetry Fidelity Score</h3>
                   </div>
                   <a class="button button-primary" href="{{ url_for('report', result_id=result_id) }}">Download Full PDF Report</a>
                 </div>
                 <dl class="metric-grid">
-                  <div class="metric metric-featured"><dt>Symmetry Fidelity Score</dt><dd>{{ result.metrics.sfs }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>A weighted composite of reconstruction accuracy, SSIM, recall, specificity, and IoU, with a penalty for changes outside the repair mask.</p></details></div>
-                  <div class="metric"><dt>Accuracy</dt><dd>{{ result.metrics.accuracy }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>60% of masked pixels changed by reconstruction plus 40% of unmasked pixels preserved.</p></details></div>
-                  <div class="metric"><dt>Recall</dt><dd>{{ result.metrics.recall }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels in the repair mask, the proportion also changed by reconstruction.</p></details></div>
-                  <div class="metric"><dt>False positive rate</dt><dd>{{ result.metrics.fpr }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Of pixels outside the repair mask, the proportion changed by reconstruction.</p></details></div>
-                  <div class="metric"><dt>IoU</dt><dd>{{ result.metrics.iou }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>The overlap of repair-mask pixels and reconstruction-changed pixels divided by their union.</p></details></div>
-                  <div class="metric"><dt>SSIM</dt><dd>{{ result.metrics.ssim }}</dd><details class="metric-tooltip"><summary>What this means</summary><p>Structural similarity between input and reconstruction, averaged over pixels outside the repair mask.</p></details></div>
-                  <div class="metric"><dt>Processing time</dt><dd>{{ result.metrics.runtime }}</dd></div>
+                  <div class="metric metric-featured"><dt>Estimated SFS</dt><dd>{{ result.metrics.sfs }}</dd></div>
                 </dl>
-                <details class="metric-help">
-                  <summary>What do these metrics mean?</summary>
-                  <dl class="metric-definitions">
-                    <div><dt>Symmetry Fidelity Score (SFS)</dt><dd>A composite score using accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive rate (15%), and IoU (10%), with a penalty for background changes. The desktop app uses 95% as a display threshold; it is not a validated guarantee.</dd></div>
-                    <div><dt>Accuracy</dt><dd>A weighted score: 60% of masked pixels changed during reconstruction plus 40% of unmasked pixels preserved.</dd></div>
-                    <div><dt>Recall</dt><dd>Measures the system's sensitivity in successfully identifying all actual physical defects present in the fabric.</dd></div>
-                    <div><dt>False Positive Rate</dt><dd>Measures the proportion of intact, undamaged weave areas incorrectly flagged by the system as defects.</dd></div>
-                    <div><dt>Intersection over Union (IoU)</dt><dd>Measures spatial localization accuracy by calculating the percentage of overlap between the predicted defect mask and the ground-truth annotation.</dd></div>
-                    <div><dt>Structural Similarity (SSIM)</dt><dd>Measures the perceptual visual similarity between the restored textile and the reference image by comparing luminance, contrast, and structural information.</dd></div>
-                  </dl>
-                  <p class="metric-caveat">These are pipeline-derived measurements, not comparisons against independently labeled ground-truth damage. Recall, false positive rate, and IoU compare the repair mask, which may include user-painted regions, with pixels changed by reconstruction. If no areas are marked for repair, some mask metrics return default values and should not be interpreted as validated detection accuracy.</p>
-                </details>
               </section>
               <div class="wizard-actions">
                 <button class="button button-secondary" type="button" data-previous>Previous</button>

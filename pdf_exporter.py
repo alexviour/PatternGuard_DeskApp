@@ -74,12 +74,16 @@ def generate_patternguard_pdf(
     subclass_name="",
     cultural_description="",
     output_details_text="",
+    outside_mask_preservation="N/A",
+    boundary_continuity="N/A",
 ):
   # Sanitize dynamic strings
   sfs_score = clean_pdf_text(sfs_score)
   wallpaper_group = clean_pdf_text(wallpaper_group)
   a1_vector = clean_pdf_text(a1_vector)
   a2_vector = clean_pdf_text(a2_vector)
+  outside_mask_preservation = clean_pdf_text(outside_mask_preservation)
+  boundary_continuity = clean_pdf_text(boundary_continuity)
   accuracy = clean_pdf_text(accuracy)
   recall = clean_pdf_text(recall)
   fpr = clean_pdf_text(fpr)
@@ -126,7 +130,11 @@ def generate_patternguard_pdf(
   pdf.set_fill_color(245, 247, 250)
 
   pdf.cell(
-      95, 7, f" Symmetry Fidelity Score (SFS): {sfs_score}", border=1, fill=True
+      95,
+      7,
+      f" Estimated SFS (reference-free): {sfs_score}",
+      border=1,
+      fill=True,
   )
   pdf.cell(
       95,
@@ -138,17 +146,8 @@ def generate_patternguard_pdf(
   pdf.ln()
 
   pdf.set_font("Helvetica", "", 8.5)
-  pdf.cell(47.5, 6, f" A1 Lattice: {a1_vector}", border=1, align="C")
-  pdf.cell(47.5, 6, f" A2 Lattice: {a2_vector}", border=1, align="C")
-  pdf.cell(47.5, 6, f" Accuracy: {accuracy}", border=1, align="C")
-  pdf.cell(47.5, 6, f" Recall: {recall}", border=1, align="C")
-  pdf.ln()
-
-  pdf.cell(47.5, 6, f" FPR: {fpr}", border=1, align="C")
-  pdf.cell(47.5, 6, f" IoU: {iou}", border=1, align="C")
-  pdf.cell(
-      95, 6, f" Structural Similarity (SSIM): {ssim}", border=1, align="C"
-  )
+  pdf.cell(95, 6, f" A1 Lattice: {a1_vector}", border=1, align="C")
+  pdf.cell(95, 6, f" A2 Lattice: {a2_vector}", border=1, align="C")
   pdf.ln(8)
 
   # 3. Cultural Metadata

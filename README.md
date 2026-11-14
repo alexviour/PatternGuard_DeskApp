@@ -5,11 +5,13 @@ browser interface.
 
 ## Run the browser app on your computer
 
-Install the dependencies, then start the local web server:
+Create the project environment, install dependencies, then start the local
+web server:
 
 ```powershell
-python -m pip install -r requirements.txt
-python webapp.py
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe webapp.py
 ```
 
 Open `http://localhost:5000` on the computer running the app. To use it from a
@@ -87,7 +89,7 @@ redistributing the model. The source archives identify the images as CC BY
 Run the reproducible benchmark from the repository root:
 
 ```powershell
-python benchmark_restoration.py
+.\.venv\Scripts\python.exe benchmark_restoration.py
 ```
 
 The benchmark evaluates every PNG image in every textile-class folder and
@@ -102,7 +104,7 @@ find intact donor patches; it is inspired by recent non-local patch-based
 inpainting work, not a reproduction of that paper's full multi-scale method.
 The DSP's internal Telea fallback remains unchanged, but Telea is no longer a
 separately benchmarked baseline. The script prints masked-pixel MAE and PSNR,
-the system's SSIM, Accuracy, Recall, FPR, IoU, and SFS metrics, plus median
+SSIM, restoration Accuracy, and Recall/FPR/IoU/SFS as unavailable, plus median
 restoration time. Per-case measurements are written to
 `restoration_benchmark_results.csv`; overall and damage-type summaries with
 source-image paired bootstrap intervals for MAE differences are written to
@@ -111,29 +113,26 @@ timed calls per method and case, and can be adjusted with `--warmup-runs` and
 `--timed-runs`.
 
 Use masked RGB MAE and PSNR against the clean image as the primary
-reconstruction measures. Accuracy, Recall, FPR, and IoU in this benchmark are
-restoration-change measures: the supplied ground-truth defect mask is compared
-with pixels changed by restoration, not with an independently predicted
-defect mask. They are not measures of defect-detector performance, and high
-Recall or Accuracy does not imply that the reconstructed pixels closely match
-the original. The SFS component values follow
-`calculate_restoration_metrics`: SSIM is computed over pixels outside the
-supplied defect mask, while Accuracy combines restoration-change coverage
-inside the mask with unchanged-pixel integrity outside it. Interpret those
-scores alongside MAE/PSNR; they are not a direct perceptual score against the
-original undamaged textile. Bootstrap intervals resample source images, rather
-than treating each mask applied to an image as an independent sample; they are
-descriptive for this dataset and do not replace evaluation on external data.
-Timing excludes image loading, damage generation, and DSP repeat-spacing
-estimation.
+reconstruction measures. SSIM and restoration Accuracy use the clean reference
+and known mask; Accuracy combines the fraction of damaged pixels reconstructed
+within 12 intensity levels of the clean image with unchanged-pixel integrity
+outside the mask. Recall, FPR, IoU, and SFS are N/A in this restoration-only
+benchmark because it supplies the known mask directly to each restoration
+method and does not evaluate a detector. Use the complete-system evaluation
+below for detector Recall, FPR, and IoU against known synthetic damage masks.
+The system evaluation also reports the SFS using its documented weights; this
+composite is implementation-defined, not an expert-validated perceptual score.
+Bootstrap intervals resample source images, rather than treating each mask
+applied to an image as an independent sample; they are descriptive for this
+dataset and do not replace evaluation on external data. Timing excludes image
+loading, damage generation, and DSP repeat-spacing estimation.
 
 ## Evaluate the complete system
 
-Run the system-level evaluation separately from the three-algorithm restoration
-benchmark:
+Run the system-level evaluation separately for system-only metrics:
 
 ```powershell
-python system_evaluation.py
+.\.venv\Scripts\python.exe system_evaluation.py
 ```
 
 It writes per-case measurements to `system_evaluation_cases.csv` and a
@@ -142,7 +141,43 @@ reports textile-classification accuracy, macro precision/recall/F1, and
 inference time; wallpaper-group agreement and time; defect-mask accuracy,
 recall, false-positive rate, and IoU; and DSP restoration SSIM, Accuracy,
 Recall, FPR, IoU, SFS, MAE, PSNR, and elapsed time. Disk, scratch, and tear
-defects are generated synthetically against one image from each textile class.
+defects are generated synthetically against every source image by default,
+using the same six damage variants as the restoration benchmark (currently
+170 images × 6 variants = 1,020 cases). Classification remains one result per
+source image (170 images). For a quick subset run, add `--max-images 11`.
+
+In the latest full 1,020-case run, detector pixel accuracy is **98.79%**,
+balanced accuracy is **99.38%**, and recall is **100.00%**. The ground-truth
+mean per-case IoU is **83.74%** (the separately pooled pixel IoU is **60.86%**),
+with a **1.24%** false-positive rate. The system's mean restoration accuracy is
+**73.89%**, clean-region SSIM is **98.32%**, and project-defined SFS is
+**88.63%**, below the **95.00% project target**. Pixel accuracy is shown with
+balanced accuracy and IoU because the many clean pixels can make pixel
+accuracy look high even when mask overlap is weaker.
+
+For each case, SFS is
+`0.35 × Restoration accuracy + 0.25 × SSIM + 0.15 × Recall + 0.15 × Specificity + 0.10 × IoU`,
+where specificity is `100 − FPR`. Restoration accuracy is `0.60 × repair
+accuracy + 0.40 × clean-region integrity`; repair accuracy is the fraction of
+ground-truth damaged grayscale pixels reconstructed within **12** intensity
+levels (inclusive) of the clean source, and clean-region integrity is the
+fraction of ground-truth clean pixels preserved within the same tolerance.
+SSIM uses the standard 0–1 similarity scale, 8-bit data range, and clean
+ground-truth pixels. Recall, specificity, and IoU compare the predicted damage
+mask with the synthetic ground-truth mask. Case scores are averaged equally;
+the pooled IoU instead aggregates pixels across all cases, so both values are
+reported and are not interchangeable.
+
+The weights prioritize reconstruction (35% threshold-based accuracy and 25%
+structural similarity), balance missed defects against false alarms (15% each
+for recall and specificity), and retain a 10% spatial-overlap term. They are
+project-defined, not empirically calibrated; several components overlap, so
+the SFS is a transparent system composite rather than an independent
+perceptual or symmetry-fidelity measure. The 95.00% figure is a project target,
+not an independently validated performance threshold. The detector's
+dark-pixel threshold is calibrated to the generated synthetic mark intensities;
+these results do not establish sensitivity to naturally damaged or
+differently colored textiles.
 
 The repository classifier was trained on the images in `dataset`, and its
 checkpoint does not contain a validation split or epoch history. Thus the
@@ -163,6 +198,81 @@ than ground-truth accuracy. Detector/restoration scores use synthetic damage,
 so they do not establish real-world performance on naturally damaged fabric.
 The system-level script does not alter or combine the results in the
 three-algorithm benchmark.
+
+The interactive web app does not have a clean reference image or complete
+damage annotations for an arbitrary upload, so its MAE, PSNR, restoration
+Accuracy, and detector Recall/FPR/IoU are shown as N/A rather than computed
+against the damaged upload. It separately shows a provisional reference-free
+Estimated SFS: an equal-weight mean of outside-mask preservation,
+repair-boundary continuity, and SSIM. These are uncalibrated plausibility
+heuristics, not ground-truth performance scores, and should not be compared
+with system-evaluation SFS.
+The system-level synthetic evaluation continues to calculate the original
+ground-truth metrics by comparing reconstructions with clean source images and
+detected masks with known synthetic ground-truth masks.
+
+### Run the panel evaluation and print metric tables
+
+For a live terminal demonstration, run the unit tests and the full system
+evaluation without starting the slower three-algorithm benchmark or generating
+a Word report:
+
+```powershell
+.\.venv\Scripts\python.exe run_panel_evaluation.py
+```
+
+This evaluates all 170 dataset images with six synthetic damage variants
+(1,020 cases), then prints the evaluation method, SFS formula, weighted SFS
+components, restoration metrics, detector metrics, and separate classifier
+diagnostics as terminal tables. The 34-image classifier validation experiment
+is not the sample size for the system damage evaluation. Per-case results and
+the summary JSON are saved under `evaluation_report\panel_evaluation\`.
+
+### Run all tests and create the Word evaluation report
+
+Run the unit tests, full system-level synthetic evaluation, three-algorithm
+benchmark, and DSP demonstration with one command, then create a Word document
+covering Objectives 1–3 with results, source-code listings, tables, figures,
+complexity analysis, and limitations:
+
+```powershell
+.\.venv\Scripts\python.exe run_project_evaluation.py
+```
+
+The Word report is saved as
+`evaluation_report\PatternGuard_Objectives_1_to_3_Results.docx`; system and
+algorithm per-case CSVs, JSON summaries, and PNG figures are saved in
+`evaluation_report\`.
+Objective 1 includes source-code listings for the webapp's resize-to-restoration
+call sequence and the DSP spacing, symmetry, defect-mask, and reconstruction
+functions. Objective 2 reports the system's SFS and textile classification,
+including classifier-fit learning curves and confusion matrices. The runner
+uses the existing classifier-fit history; run
+`python evaluate_classifier_fit.py` first to refresh those fit-evaluation
+artifacts. Objective 3 compares DSP, PatchMatch, and Navier-Stokes with masked
+reconstruction quality, measured median restoration milliseconds, and
+time/space complexity. The benchmark runs all 1,020 paired cases by default,
+but the report runner uses one timed restoration call per method/case (3,060
+restorations total) to finish faster. It prints progress every 100 cases.
+Increase timing repeats for a more stable timing estimate with:
+
+```powershell
+.\.venv\Scripts\python.exe run_project_evaluation.py --benchmark-timed-runs 5
+```
+
+Quality metrics still cover all 1,020 cases regardless of timing repeats.
+Use VS Code's **Run Python File in Terminal** action (not an Output-only
+Code Runner action) to see the run directly in the integrated terminal. Test
+and evaluation progress is streamed as it runs. After the benchmark, figures,
+and Word report finish, the console prints aligned tables for the test count,
+Objective 2 system metrics, Objective 3 algorithm results, and paired MAE
+intervals, followed by output paths. Running an individual test file reports
+test pass/fail only; run the full command above to generate the evaluation
+tables.
+
+Install requirements first if needed; this script requires `python-docx` to
+write the Word document. If the existing report is open in Word and cannot be
+overwritten, the script saves the new document with an `_updated` suffix.
 
 ## Visualize DSP analysis and restoration
 
@@ -195,12 +305,14 @@ synthetic disk is a real textile defect.
 3. **FFT autocorrelation:** `run_algorithm_i_autocorrelation` computes the
    two-dimensional FFT, multiplies it by its complex conjugate, inverse
    transforms the power spectrum, and centers the autocorrelation map. It
-   suppresses the central peak to estimate horizontal and vertical repeat
-   spacing (`a1`, `a2`).
+   detects multiple off-center peaks to estimate two lattice vectors and
+   reports low-confidence or insufficient lattice evidence as uncertain.
 4. **Wallpaper-symmetry vote:** local tiles are compared with mirrored and
    rotated versions using normalized cross-correlation. Votes and tile aspect
-   ratio select a heuristic wallpaper-group label; this is a rule-based
-   estimate, not a learned or calibrated classifier.
+   ratio select a heuristic wallpaper-group label. Inconsistent votes and
+   groups that require unmeasured lattice-centering evidence are reported as
+   uncertain; this is a rule-based estimate, not a learned or calibrated
+   classifier.
 5. **Defect isolation:** `run_algorithm_ii_defect_isolation` applies a dark
    pixel threshold, compares grayscale pixels with a local box-filter mean,
    thresholds structural differences, then uses morphology to form a defect
@@ -230,7 +342,7 @@ To measure the classifier's fit over training epochs, create a fresh model
 using a stratified train/validation split:
 
 ```powershell
-python evaluate_classifier_fit.py
+.\.venv\Scripts\python.exe evaluate_classifier_fit.py
 ```
 
 The script does not load or overwrite the application checkpoint. It trains a
@@ -244,10 +356,14 @@ true-positive (TP), false-positive (FP), false-negative (FN), true-negative
 (TN), precision, recall, and F1 tables directly in the terminal. The same
 per-class tables are saved as `train_classification_summary.csv` and
 `validation_classification_summary.csv`.
+The Objectives 1–3 Word report embeds the existing fit curves and validation
+confusion matrix below Objective 2, separately from the deployed checkpoint's
+in-sample classification results. Re-run this fit command before the report
+runner if you want to refresh those fit-evaluation artifacts.
 Open PowerShell in the repository folder and run:
 
 ```powershell
-python evaluate_classifier_fit.py
+.\.venv\Scripts\python.exe evaluate_classifier_fit.py
 ```
 
 Epoch progress and final result tables appear in that PowerShell window. To

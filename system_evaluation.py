@@ -8,7 +8,8 @@ The default classifier results are resubstitution measurements on the labeled
 training dataset, not independent generalization accuracy. Supply a separate,
 held-out ImageFolder directory to measure test accuracy. Wallpaper-group labels
 come from cultural_data.py and are provisional metadata, not expert-verified
-ground truth. Defect and restoration metrics use controlled synthetic damage.
+ground truth. Defect and restoration metrics use the six controlled synthetic
+damage variants from the restoration benchmark.
 """
 
 from __future__ import annotations
@@ -55,6 +56,7 @@ CSV_FIELDS = (
     "precision_macro_percent", "recall_macro_percent", "f1_macro_percent",
     "ssim_percent", "restoration_accuracy_percent", "defect_recall_percent",
     "defect_fpr_percent", "defect_iou_percent", "sfs_percent",
+    "legacy_sfs_percent",
     "mae_full", "mae_masked", "psnr_full_db", "elapsed_ms", "notes",
 )
 
@@ -64,6 +66,21 @@ TEAR_POLYGON = np.array(
         [149, 129], [131, 143], [111, 132], [99, 112], [108, 93],
     ],
     dtype=np.int32,
+)
+SMALL_TEAR_POLYGON = np.array(
+    [
+        [112, 89], [127, 84], [139, 92], [143, 105], [136, 115],
+        [141, 126], [129, 135], [116, 128], [108, 116], [113, 102],
+    ],
+    dtype=np.int32,
+)
+DAMAGE_VARIANTS = (
+    "disk_small",
+    "disk_large",
+    "scratch_thin",
+    "scratch_wide",
+    "tear_small",
+    "tear_large",
 )
 
 
@@ -76,6 +93,14 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-dir", type=Path, default=Path(".")
+    )
+    parser.add_argument(
+        "--max-images",
+        type=int,
+        help=(
+            "Optional cap on source images for a quick run. By default, "
+            "evaluate every image in the dataset."
+        ),
     )
     return parser.parse_args()
 
@@ -222,15 +247,22 @@ def _synthetic_damage(
 ) -> tuple[np.ndarray, np.ndarray]:
     damaged = clean.copy()
     mask = np.zeros(clean.shape[:2], dtype=np.uint8)
-    if scenario == "disk":
-        cv2.circle(damaged, (128, 128), 20, (0, 0, 0), -1)
-        cv2.circle(mask, (128, 128), 20, 255, -1)
-    elif scenario == "scratch":
-        cv2.line(damaged, (68, 110), (188, 117), (0, 0, 0), 5)
-        cv2.line(mask, (68, 110), (188, 117), 255, 5)
-    elif scenario == "tear":
-        cv2.fillPoly(damaged, [TEAR_POLYGON], (25, 25, 25))
-        cv2.fillPoly(mask, [TEAR_POLYGON], 255)
+    if scenario in ("disk_small", "disk_large"):
+        radius = 10 if scenario == "disk_small" else 20
+        cv2.circle(damaged, (128, 128), radius, (0, 0, 0), -1)
+        cv2.circle(mask, (128, 128), radius, 255, -1)
+    elif scenario in ("scratch_thin", "scratch_wide"):
+        thickness = 3 if scenario == "scratch_thin" else 7
+        cv2.line(
+            damaged, (68, 110), (188, 117), (0, 0, 0), thickness
+        )
+        cv2.line(mask, (68, 110), (188, 117), 255, thickness)
+    elif scenario in ("tear_small", "tear_large"):
+        polygon = (
+            SMALL_TEAR_POLYGON if scenario == "tear_small" else TEAR_POLYGON
+        )
+        cv2.fillPoly(damaged, [polygon], (25, 25, 25))
+        cv2.fillPoly(mask, [polygon], 255)
     else:
         raise ValueError(f"Unknown synthetic-damage scenario: {scenario}")
     return damaged, mask
@@ -254,14 +286,24 @@ def _aggregate_mask_metrics(
             100.0 * np.count_nonzero(actual & predicted) / union
             if union else 100.0
         )
+    recall = 100.0 * tp / (tp + fn) if tp + fn else 100.0
+    false_positive_rate = 100.0 * fp / (fp + tn) if fp + tn else 0.0
+    precision = (
+        100.0 * tp / (tp + fp)
+        if tp + fp
+        else (100.0 if tp + fn == 0 else 0.0)
+    )
     return {
         "pixel_accuracy_percent": 100.0 * (tp + tn) / (tp + fp + fn + tn),
-        "recall_percent": 100.0 * tp / (tp + fn) if tp + fn else 100.0,
-        "false_positive_rate_percent": (
-            100.0 * fp / (fp + tn) if fp + tn else 0.0
+        "balanced_accuracy_percent": (
+            recall + 100.0 - false_positive_rate
+        ) / 2.0,
+        "precision_percent": precision,
+        "recall_percent": recall,
+        "false_positive_rate_percent": false_positive_rate,
+        "iou_percent": (
+            100.0 * tp / (tp + fp + fn) if tp + fp + fn else 100.0
         ),
-        "iou_percent": 100.0 * tp / (tp + fp + fn)
-        if tp + fp + fn else 100.0,
         "mean_case_iou_percent": statistics.mean(per_case_iou),
         "true_positive_pixels": tp,
         "false_positive_pixels": fp,
@@ -273,11 +315,8 @@ def _aggregate_mask_metrics(
 def _system_component_evaluation(
     dataset: datasets.ImageFolder,
     rows: list[dict[str, Any]],
+    max_images: int | None = None,
 ) -> dict[str, Any]:
-    first_by_class: dict[str, str] = {}
-    for image_path, target in dataset.samples:
-        first_by_class.setdefault(dataset.classes[target], image_path)
-
     group_rows = []
     group_times = []
     damage_truth = []
@@ -289,6 +328,7 @@ def _system_component_evaluation(
         "defect_fpr_percent": [],
         "defect_iou_percent": [],
         "sfs_percent": [],
+        "legacy_sfs_percent": [],
         "mae_full": [],
         "mae_masked": [],
         "psnr_full_db": [],
@@ -296,7 +336,12 @@ def _system_component_evaluation(
         "restoration_ms": [],
     }
 
-    for class_name, image_path in sorted(first_by_class.items()):
+    samples = sorted(dataset.samples, key=lambda sample: sample[0])
+    if max_images is not None:
+        samples = samples[:max_images]
+
+    for image_path, target in samples:
+        class_name = dataset.classes[target]
         clean = _load_square_bgr(image_path)
         clean_gray = cv2.cvtColor(clean, cv2.COLOR_BGR2GRAY)
         started = time.perf_counter()
@@ -319,7 +364,7 @@ def _system_component_evaluation(
         if metadata_group is not None:
             group_rows.append((metadata_group, predicted_group))
 
-        for scenario in ("disk", "scratch", "tear"):
+        for scenario in DAMAGE_VARIANTS:
             damaged, actual_mask = _synthetic_damage(clean, scenario)
             damaged_gray = cv2.cvtColor(damaged, cv2.COLOR_BGR2GRAY)
 
@@ -341,14 +386,26 @@ def _system_component_evaluation(
             )
             restoration_ms = (time.perf_counter() - started) * 1000.0
 
+            reconstructed_gray = cv2.cvtColor(
+                reconstructed,
+                cv2.COLOR_BGR2GRAY,
+            )
             ssim, restoration_accuracy, recall, fpr, iou, sfs = (
                 calculate_restoration_metrics(
                     clean_gray,
-                    cv2.cvtColor(reconstructed, cv2.COLOR_BGR2GRAY),
+                    reconstructed_gray,
                     actual_mask,
                     detected_mask,
                 )
             )
+            clean_region = actual_mask == 0
+            clean_region_change = float(np.mean(np.abs(
+                clean_gray[clean_region].astype(np.float32)
+                - reconstructed_gray[clean_region].astype(np.float32)
+            )))
+            legacy_sfs = sfs
+            if clean_region_change > 12.0:
+                legacy_sfs *= max(0.05, 1.0 - clean_region_change / 80.0)
             full_error = np.abs(
                 reconstructed.astype(np.float32) - clean.astype(np.float32)
             )
@@ -368,6 +425,7 @@ def _system_component_evaluation(
                 "defect_fpr_percent": fpr,
                 "defect_iou_percent": iou,
                 "sfs_percent": sfs,
+                "legacy_sfs_percent": legacy_sfs,
                 "mae_full": mae_full,
                 "mae_masked": mae_masked,
                 "psnr_full_db": psnr,
@@ -390,6 +448,7 @@ def _system_component_evaluation(
                 "defect_fpr_percent": fpr,
                 "defect_iou_percent": iou,
                 "sfs_percent": sfs,
+                "legacy_sfs_percent": legacy_sfs,
                 "mae_full": mae_full,
                 "mae_masked": mae_masked,
                 "psnr_full_db": psnr,
@@ -406,6 +465,29 @@ def _system_component_evaluation(
         / len(group_rows)
         if group_rows else None
     )
+    group_confusion = {}
+    for actual, predicted in group_rows:
+        group_confusion.setdefault(actual, {})
+        group_confusion[actual][predicted] = (
+            group_confusion[actual].get(predicted, 0) + 1
+        )
+    uncertain_group_count = sum(
+        predicted == "uncertain" for _, predicted in group_rows
+    )
+    partial_group_count = sum(
+        predicted == "pmm/cmm" for _, predicted in group_rows
+    )
+    classified_group_rows = [
+        (actual, predicted)
+        for actual, predicted in group_rows
+        if predicted != "uncertain"
+    ]
+    selective_group_accuracy = (
+        100.0
+        * sum(actual == predicted for actual, predicted in classified_group_rows)
+        / len(classified_group_rows)
+        if classified_group_rows else None
+    )
     detector_summary = _aggregate_mask_metrics(
         damage_truth, damage_predictions
     )
@@ -413,15 +495,58 @@ def _system_component_evaluation(
     detector_summary["mean_detection_ms"] = statistics.mean(
         restoration_values["defect_detection_ms"]
     )
-    restoration_summary: dict[str, float | None] = {
+    restoration_summary: dict[str, Any] = {
         key: statistics.mean(values) if values else None
         for key, values in restoration_values.items()
     }
     restoration_summary["case_count"] = len(restoration_values["sfs_percent"])
+    specificity = 100.0 - restoration_summary["defect_fpr_percent"]
+    sfs_components = (
+        ("Restoration accuracy", "restoration_accuracy_percent", 0.35),
+        ("SSIM", "ssim_percent", 0.25),
+        ("Recall", "defect_recall_percent", 0.15),
+        ("Specificity", None, 0.15),
+        ("IoU", "defect_iou_percent", 0.10),
+    )
+    restoration_summary["sfs_weighted_component_check_percent"] = sum(
+        weight * (
+            specificity if metric_key is None else restoration_summary[metric_key]
+        )
+        for _, metric_key, weight in sfs_components
+    )
+    restoration_summary["sfs_components"] = [
+        {
+            "component": name,
+            "weight_percent": weight * 100.0,
+            "mean_percent": (
+                specificity
+                if metric_key is None
+                else restoration_summary[metric_key]
+            ),
+            "weighted_contribution_points": weight * (
+                specificity
+                if metric_key is None
+                else restoration_summary[metric_key]
+            ),
+        }
+        for name, metric_key, weight in sfs_components
+    ]
     return {
         "wallpaper_group": {
             "case_count": len(group_rows),
             "metadata_agreement_percent": group_accuracy,
+            "classified_metadata_agreement_percent": selective_group_accuracy,
+            "uncertain_prediction_count": uncertain_group_count,
+            "uncertain_prediction_rate_percent": (
+                100.0 * uncertain_group_count / len(group_rows)
+                if group_rows else None
+            ),
+            "partial_prediction_count": partial_group_count,
+            "partial_prediction_rate_percent": (
+                100.0 * partial_group_count / len(group_rows)
+                if group_rows else None
+            ),
+            "confusion_matrix": group_confusion,
             "mean_inference_ms": statistics.mean(group_times),
             "ground_truth_warning": (
                 "Uses group strings in cultural_data.py; treat as provisional "
@@ -442,6 +567,8 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     args = _parse_args()
+    if args.max_images is not None and args.max_images < 1:
+        raise ValueError("--max-images must be at least one")
     train_dataset = _ensure_imagefolder(args.dataset)
     classifier = PatternClassifier(str(args.model))
     if set(train_dataset.classes) - set(classifier.classes):
@@ -491,7 +618,17 @@ def main() -> None:
             ),
         }
 
-    component_summary = _system_component_evaluation(train_dataset, rows)
+    component_summary = _system_component_evaluation(
+        train_dataset,
+        rows,
+        max_images=args.max_images,
+    )
+    evaluated_samples = sorted(
+        train_dataset.samples,
+        key=lambda sample: sample[0],
+    )
+    if args.max_images is not None:
+        evaluated_samples = evaluated_samples[:args.max_images]
     training_metrics = classification["training_dataset_diagnostic"]
     rows.append({
         "task": "textile_classification_summary",
@@ -561,6 +698,7 @@ def main() -> None:
         "defect_fpr_percent": restoration_summary["defect_fpr_percent"],
         "defect_iou_percent": restoration_summary["defect_iou_percent"],
         "sfs_percent": restoration_summary["sfs_percent"],
+        "legacy_sfs_percent": restoration_summary["legacy_sfs_percent"],
         "mae_full": restoration_summary["mae_full"],
         "mae_masked": restoration_summary["mae_masked"],
         "psnr_full_db": restoration_summary["psnr_full_db"],
@@ -571,13 +709,61 @@ def main() -> None:
         "evaluation": "system evaluation, separate from algorithm comparison",
         "dataset": str(args.dataset),
         "test_dataset": str(args.test_dataset) if args.test_dataset else None,
+        "sfs_definition": {
+            "name": "Ground-truth System Fidelity Score (SFS)",
+            "formula": (
+                "0.35 * Restoration accuracy + 0.25 * SSIM + "
+                "0.15 * Recall + 0.15 * Specificity + 0.10 * IoU"
+            ),
+            "inputs": (
+                "Clean source image and synthetic ground-truth damage mask; "
+                "the separately predicted detector mask is used for Recall, "
+                "Specificity, and IoU."
+            ),
+            "component_rationale": [
+                "Restoration accuracy (35%): largest single weight; 60% of this component is the fraction of damaged grayscale pixels reconstructed within 12 intensity levels of the clean source, and 40% is the fraction of undamaged pixels preserved within that tolerance.",
+                "SSIM (25%): clean-region structural similarity against the clean source, using the 0-255 image range.",
+                "Recall (15%): sensitivity to ground-truth damaged pixels.",
+                "Specificity (15%): one minus the false-positive rate on ground-truth clean pixels, balancing missed damage against false alarms.",
+                "IoU (10%): spatial overlap of predicted and ground-truth damage regions, penalizing both false positives and false negatives.",
+            ],
+            "aggregation": (
+                "Calculate every component and SFS per synthetic damage case, "
+                "then report the unweighted arithmetic mean across cases. "
+                "The separately reported pooled IoU aggregates pixels globally."
+            ),
+            "project_target_percent": 95.0,
+            "interpretation": (
+                "Weights are project-defined and not empirically calibrated. "
+                "SFS is an overall system composite; without expert symmetry "
+                "labels it is not a validated measure of symmetry fidelity. "
+                "The 95.00% value is a project target, not an independently "
+                "validated threshold."
+            ),
+        },
+        "evaluation_protocol": {
+            "source_image_count": len(evaluated_samples),
+            "damage_variants_per_source": len(DAMAGE_VARIANTS),
+            "synthetic_damage_case_count": component_summary[
+                "dsp_restoration"
+            ]["case_count"],
+            "source_selection": (
+                "all dataset images"
+                if args.max_images is None
+                else f"first {args.max_images} images sorted by path"
+            ),
+            "image_size": f"{IMAGE_SIZE}x{IMAGE_SIZE}",
+        },
         "classification": classification,
         **component_summary,
         "methodology_limits": [
             "Classification on the repository dataset is resubstitution only.",
             "Wallpaper-group agreement uses unverified cultural_data.py labels.",
-            "Detector and restoration tests use synthetic disk, scratch, and tear damage.",
-            "SFS is the existing project composite; report its components and MAE/PSNR alongside it.",
+            "Detector and restoration tests use six synthetic disk, scratch, and tear variants.",
+            "The detector's dark-pixel threshold is calibrated to the generated synthetic mark intensities; results do not establish sensitivity to naturally occurring or differently colored damage.",
+            "SFS component weights are project-defined rather than empirically calibrated.",
+            "A below-target SFS reflects the weighted contribution of all components; restoration accuracy and IoU are inspected separately.",
+            "The 95.00% SFS target is project-defined and has not been independently validated.",
             "Synthetic results do not establish performance on naturally damaged textiles.",
         ],
     }

@@ -1,8 +1,10 @@
 import unittest
+from unittest.mock import patch
 
 import cv2
 import numpy as np
 
+import dsp_engine
 from dsp_engine import (
     estimate_repeat_spacing,
     run_algorithm_i_autocorrelation,
@@ -75,6 +77,18 @@ class TestTextileReconstruction(unittest.TestCase):
         self.assertLess(after_error, before_error * 0.05)
         self.assertFalse(np.any(changed_outside_repair))
 
+    def test_detector_avoids_expanding_low_intensity_synthetic_marks(self):
+        image = np.full((64, 64, 3), 30, dtype=np.uint8)
+        expected_mask = np.zeros((64, 64), dtype=np.uint8)
+        image[20:28, 20:28] = 25
+        expected_mask[20:28, 20:28] = 255
+
+        predicted_mask, _ = run_algorithm_ii_defect_isolation(
+            image, 16, 16
+        )
+
+        np.testing.assert_array_equal(predicted_mask, expected_mask)
+
     def test_repeat_spacing_helper_matches_full_autocorrelation_result(self):
         gray = cv2.cvtColor(self.clean_fabric, cv2.COLOR_BGR2GRAY)
 
@@ -83,6 +97,93 @@ class TestTextileReconstruction(unittest.TestCase):
 
         np.testing.assert_array_equal(spacing_result[0], full_result[0])
         self.assertEqual(spacing_result[1:], full_result[1:4])
+
+    def test_lattice_estimator_recovers_two_repeat_directions(self):
+        gray = cv2.cvtColor(self.clean_fabric, cv2.COLOR_BGR2GRAY)
+
+        _, a1, a2, _, lattice = estimate_repeat_spacing(
+            gray, include_lattice=True
+        )
+
+        self.assertTrue(lattice["reliable"])
+        self.assertGreaterEqual(lattice["peak_count"], 2)
+        self.assertEqual(len(lattice["vectors"]), 2)
+        self.assertAlmostEqual(a1, 32.0, delta=3.0)
+        self.assertAlmostEqual(a2, 32.0, delta=3.0)
+
+    def test_lattice_spacing_survives_rotation_crop_and_noise(self):
+        gray = cv2.cvtColor(self.clean_fabric, cv2.COLOR_BGR2GRAY)
+        rotation = cv2.getRotationMatrix2D((128, 128), 23, 1.0)
+        rotated = cv2.warpAffine(gray, rotation, (256, 256))
+        rng = np.random.default_rng(42)
+        noisy = np.clip(
+            gray.astype(np.int16) + rng.normal(0, 5, gray.shape),
+            0,
+            255,
+        ).astype(np.uint8)
+
+        for variant in (rotated, gray[8:-8, 10:-10], noisy):
+            _, a1, a2, _, lattice = estimate_repeat_spacing(
+                variant, include_lattice=True
+            )
+            self.assertTrue(lattice["reliable"])
+            self.assertAlmostEqual(a1, 32.0, delta=4.0)
+            self.assertAlmostEqual(a2, 32.0, delta=4.0)
+
+    def test_flat_image_returns_uncertain_wallpaper_group(self):
+        gray = np.full((256, 256), 128, dtype=np.uint8)
+
+        result = run_algorithm_i_autocorrelation(gray, include_evidence=True)
+
+        self.assertEqual(result[4], "uncertain")
+        self.assertEqual(result[5]["classification_status"], "uncertain")
+        self.assertFalse(result[5]["lattice"]["reliable"])
+
+    def test_90_degree_vote_without_180_degree_vote_is_uncertain(self):
+        gray = np.tile(np.arange(256, dtype=np.uint8), (256, 1))
+
+        def score_90_only(_image, _y0, _x0, tile_size, transform_fn, *_args):
+            tile = np.arange(tile_size * tile_size, dtype=np.uint8).reshape(
+                tile_size, tile_size
+            )
+            transformed = transform_fn(tile)
+            return 0.9 if np.array_equal(transformed, np.rot90(tile, 1)) else 0.1
+
+        with patch("dsp_engine._best_local_ncc", side_effect=score_90_only):
+            evidence = dsp_engine._classify_wallpaper_group_with_evidence(
+                gray, 32.0, 32.0
+            )
+
+        self.assertEqual(evidence["group"], "uncertain")
+        self.assertIn("180-degree", evidence["decision_path"])
+
+    def test_non_square_mirrors_report_family_without_claiming_centering(self):
+        gray = np.tile(np.arange(256, dtype=np.uint8), (256, 1))
+
+        def score_mirrors_and_180(_image, _y0, _x0, tile_size, transform_fn, *_args):
+            tile = np.arange(tile_size * tile_size, dtype=np.uint8).reshape(
+                tile_size, tile_size
+            )
+            transformed = transform_fn(tile)
+            tested = (
+                np.fliplr(tile),
+                np.flipud(tile),
+                np.rot90(tile, 2),
+            )
+            return 0.9 if any(np.array_equal(transformed, item) for item in tested) else 0.1
+
+        with patch("dsp_engine._best_local_ncc", side_effect=score_mirrors_and_180):
+            with patch(
+                "dsp_engine._translation_symmetry_evidence",
+                return_value={"status": "unresolved"},
+            ):
+                evidence = dsp_engine._classify_wallpaper_group_with_evidence(
+                    gray, 32.0, 48.0
+                )
+
+        self.assertEqual(evidence["group"], "pmm/cmm")
+        self.assertEqual(evidence["classification_status"], "partial")
+        self.assertIn("centering", evidence["decision_path"])
 
     def test_reconstructs_circular_mark_with_local_color_match(self):
         self._reconstruct(

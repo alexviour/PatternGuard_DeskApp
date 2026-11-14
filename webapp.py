@@ -25,7 +25,10 @@ from dsp_engine import (
     run_algorithm_ii_defect_isolation,
     run_algorithm_iii_template_alignment,
 )
-from evaluation_metrics import calculate_restoration_metrics
+from evaluation_metrics import (
+    calculate_reference_free_metrics,
+    calculate_restoration_metrics,
+)
 from pattern_classifier import PatternClassifier
 from pdf_exporter import generate_patternguard_pdf
 from reference_data import REFERENCE_ITEMS
@@ -39,6 +42,15 @@ ANALYSIS_SIZE = (256, 256)
 MAX_CACHED_RESULTS = 25
 RESULT_TTL_SECONDS = 2 * 60 * 60
 WALLPAPER_GROUP_EXPLANATIONS = {
+    "pmm/cmm": (
+        "Two-fold rotation and mirror symmetry were detected. The evidence "
+        "supports the pmm/cmm family, but lattice centering was not measured, "
+        "so the exact wallpaper group is unresolved."
+    ),
+    "uncertain": (
+        "The lattice or symmetry evidence was insufficient or inconsistent, "
+        "so no wallpaper group was assigned."
+    ),
     "p1": "No non-trivial rotation or mirror symmetry was detected.",
     "p2": "The pattern shows 180-degree rotational symmetry.",
     "pm": "The pattern shows mirror symmetry along at least one direction.",
@@ -326,15 +338,15 @@ def create_app():
                 wallpaper_group=report_data["wallpaper_group"],
                 a1_vector=report_data["a1_vector"],
                 a2_vector=report_data["a2_vector"],
-                accuracy=report_data["accuracy"],
-                recall=report_data["recall"],
-                fpr=report_data["fpr"],
-                iou=report_data["iou"],
                 ssim=report_data["ssim"],
                 category_name=report_data["category"],
                 subclass_name=report_data["subclass"],
                 cultural_description=report_data["cultural_description"],
                 output_details_text=report_data["details"],
+                outside_mask_preservation=report_data[
+                    "outside_mask_preservation"
+                ],
+                boundary_continuity=report_data["boundary_continuity"],
             )
             pdf_bytes = pdf_path.read_bytes()
 
@@ -490,11 +502,33 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
     )
 
     restored_gray = cv2.cvtColor(restored_bgr, cv2.COLOR_BGR2GRAY)
-    ssim_val, accuracy, recall, fpr, iou, sfs_score = (
+    ssim_val = (
         calculate_restoration_metrics(
             original_gray, restored_gray, defect_mask, None
-        )
+        )[0]
     )
+    reference_free_metrics = calculate_reference_free_metrics(
+        original_resized,
+        restored_bgr,
+        defect_mask,
+        ssim_val,
+    )
+    estimated_sfs = reference_free_metrics["estimated_sfs"]
+    score_text = (
+        f"{estimated_sfs:.2f}%"
+        if estimated_sfs is not None else "N/A"
+    )
+    reference_free_metric_text = {
+        name: (
+            f"{reference_free_metrics[name]:.2f}%"
+            if reference_free_metrics[name] is not None else "N/A"
+        )
+        for name in (
+            "outside_preservation",
+            "boundary_continuity",
+            "ssim",
+        )
+    }
     heatmap_bgr = _render_detection_heatmap(diff_map, defect_mask)
     runtime_ms = (time.perf_counter() - start_time) * 1000
 
@@ -575,7 +609,6 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         confidence_text = "Confidence: --"
 
     group = str(detected_group) if detected_group else "N/A"
-    score_text = "N/A" if no_defect_detected else f"{sfs_score:.2f}%"
     if no_defect_detected:
         summary_title = "No repair was indicated by this audit"
         summary_text = (
@@ -583,20 +616,9 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
             "for reconstruction. This is an automated screening result, not "
             "a guarantee that the textile has no damage."
         )
-        score_interpretation = (
-            "The SFS is shown as N/A because no detected defect required a "
-            "repair assessment. The pixel-mask metrics also have no "
-            "independent ground-truth damage labels: when the detected mask "
-            "is empty, the metric formulas return default values for some "
-            "rates, so those values should not be read as measured defect "
-            "detection accuracy."
-        )
+        score_interpretation = "Estimated reference-free reconstruction score."
     else:
-        summary_title = (
-            "Detected areas were reconstructed"
-            if sfs_score >= 95.0
-            else "Review the Reconstruction"
-        )
+        summary_title = "Detected areas were reconstructed"
         summary_text = (
             f"The audit marked {int(np.count_nonzero(defect_mask)):,} pixels "
             "in the 256 × 256 analysis image as possible defects, then "
@@ -604,9 +626,7 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
             "patterns. Review the original, detected error heatmap, and "
             "reconstruction side by side."
         )
-        score_interpretation = (
-            f"The Symmetry Fidelity Score is {sfs_score:.2f}%."
-        )
+        score_interpretation = "Estimated reference-free reconstruction score."
     wallpaper_explanation = WALLPAPER_GROUP_EXPLANATIONS.get(
         group,
         "The detected repeat did not match one of the listed symmetry "
@@ -648,11 +668,31 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
                 "passed": passed,
             }
         )
+    lattice_vectors = wallpaper_evidence.get("lattice", {}).get("vectors", [])
+    if len(lattice_vectors) == 2:
+        a1_vector = (
+            f"({lattice_vectors[0]['dx']}, {lattice_vectors[0]['dy']}) px"
+        )
+        a2_vector = (
+            f"({lattice_vectors[1]['dx']}, {lattice_vectors[1]['dy']}) px"
+        )
+    else:
+        a1_vector = f"(0, {a1:.1f}) px"
+        a2_vector = f"({a2:.1f}, 0) px"
     wallpaper_evidence_display = {
-        "a1_vector": f"(0, {a1:.1f}) px",
-        "a2_vector": f"({a2:.1f}, 0) px",
+        "classification_status": wallpaper_evidence.get(
+            "classification_status", "classified"
+        ),
+        "a1_vector": a1_vector,
+        "a2_vector": a2_vector,
         "aspect_ratio": wallpaper_evidence["aspect_ratio"],
         "is_square": wallpaper_evidence["is_square"],
+        "lattice_confidence": wallpaper_evidence.get("lattice", {}).get(
+            "confidence", 0.0
+        ),
+        "lattice_reliable": wallpaper_evidence.get("lattice", {}).get(
+            "reliable", False
+        ),
         "tile_side": wallpaper_evidence["tile_side"],
         "search_radius": wallpaper_evidence["search_radius"],
         "search_step": wallpaper_evidence["search_step"],
@@ -668,8 +708,12 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         f"A2 = {a2:.1f} pixels in the 256 × 256 analysis image. It classified "
         f"the wallpaper group as {group}: {wallpaper_explanation}\n\n"
         "Wallpaper-group decision trace: F = FFT2(I); R = "
-        "|fftshift(IFFT2(F × conjugate(F)))|. The central 20-pixel disk is "
-        "excluded before selecting the strongest autocorrelation peak. "
+        "|fftshift(IFFT2(F × conjugate(F)))|. Candidate lattice vectors are "
+        "estimated from multiple significant, non-collinear off-center "
+        "autocorrelation peaks; symmetry testing is skipped when their "
+        f"strength is insufficient. Lattice confidence is "
+        f"{wallpaper_evidence_display['lattice_confidence']:.0%}; "
+        f"lattice reliable: {wallpaper_evidence_display['lattice_reliable']}. "
         f"The estimated repeat vectors are a1 = {wallpaper_evidence_display['a1_vector']} "
         f"and a2 = {wallpaper_evidence_display['a2_vector']}; the ratio "
         f"a1/a2 = {wallpaper_evidence['aspect_ratio']:.3f} selects the "
@@ -689,22 +733,7 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         "for matching clean patches aligned to the estimated lattice, with "
         "an inpainting fallback when no matching patch is found. Optional "
         "user-painted damage areas are added to the repair mask.\n\n"
-        "Metric definitions: SSIM measures structural similarity in pixels "
-        "outside the repair mask; accuracy combines the fraction of masked "
-        "pixels changed by reconstruction (60%) and the fraction of unmasked "
-        "pixels preserved (40%); recall, false positive rate, and IoU compare "
-        "the repair mask with pixels changed by the reconstruction, not "
-        "with independently labeled ground-truth damage. SFS combines "
-        "accuracy (35%), SSIM (25%), recall (15%), 100% minus false positive "
-        "rate (15%), and IoU (10%), with an additional penalty for changes "
-        "outside the repair mask.\n\n"
-        f"SSIM: {ssim_val:.2f}%\n"
-        f"Symmetry Fidelity Score: {score_text}\n"
-        f"Accuracy: {accuracy:.2f}%\n"
-        f"Recall: {recall:.2f}%\n"
-        f"False Positive Rate: {fpr:.2f}%\n"
-        f"IoU: {iou:.2f}%\n"
-        f"Processing time: {runtime_ms:.0f} ms"
+        f"Estimated SFS (reference-free): {score_text}"
     )
 
     if no_defect_detected:
@@ -754,18 +783,14 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         "wallpaper_evidence": wallpaper_evidence_display,
         "metrics": {
             "sfs": score_text,
+            **reference_free_metric_text,
             "wallpaper_group": group,
             "a1": f"{a1:.1f}",
             "a2": f"{a2:.1f}",
-            "illumination_uniformity": f"{illumination_score:.0f}%",
+            "illumination_uniformity": f"{illumination_score:.2f}%",
             "illumination_quality": (
                 "OK" if illumination_score >= 90.0 else "Review lighting"
             ),
-            "accuracy": f"{accuracy:.1f}%",
-            "recall": f"{recall:.1f}%",
-            "fpr": f"{fpr:.1f}%",
-            "iou": f"{iou:.1f}%",
-            "ssim": f"{ssim_val:.1f}%",
             "runtime": f"{runtime_ms:.0f} ms",
         },
         "warning": None,
@@ -775,11 +800,13 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
             "wallpaper_group": group,
             "a1_vector": f"{a1:.1f}",
             "a2_vector": f"{a2:.1f}",
-            "accuracy": f"{accuracy:.1f}%",
-            "recall": f"{recall:.1f}%",
-            "fpr": f"{fpr:.1f}%",
-            "iou": f"{iou:.1f}%",
-            "ssim": f"{ssim_val:.1f}%",
+            "ssim": f"{ssim_val:.2f}%",
+            "outside_mask_preservation": reference_free_metric_text[
+                "outside_preservation"
+            ],
+            "boundary_continuity": reference_free_metric_text[
+                "boundary_continuity"
+            ],
             "category": category,
             "subclass": subclass,
             "cultural_description": (

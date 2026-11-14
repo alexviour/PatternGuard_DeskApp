@@ -2,6 +2,7 @@ import io
 import html
 import re
 import base64
+import zlib
 import unittest
 from unittest.mock import patch
 
@@ -413,11 +414,44 @@ class WebAppTests(unittest.TestCase):
                         "confidence": 96.0,
                         "is_supported": True,
                     }
-                    webapp._analyze_image(rgb_image, manual_mask)
+                    with patch.object(
+                        webapp,
+                        "calculate_restoration_metrics",
+                        return_value=(
+                            98.765,
+                            87.654,
+                            76.543,
+                            12.345,
+                            65.432,
+                            83.456,
+                        ),
+                    ):
+                        result = webapp._analyze_image(rgb_image, manual_mask)
 
         np.testing.assert_array_equal(
             reconstruction.call_args.args[1],
             np.where((detected_mask > 0) | (manual_mask > 0), 255, 0),
+        )
+        self.assertNotEqual(result["metrics"]["sfs"], "N/A")
+        self.assertNotEqual(
+            result["metrics"]["outside_preservation"], "N/A"
+        )
+        self.assertNotEqual(
+            result["metrics"]["boundary_continuity"], "N/A"
+        )
+        self.assertNotEqual(result["metrics"]["ssim"], "N/A")
+        self.assertEqual(result["metrics"]["ssim"], "98.77%")
+        self.assertEqual(
+            result["report"]["outside_mask_preservation"],
+            result["metrics"]["outside_preservation"],
+        )
+        self.assertEqual(
+            result["report"]["boundary_continuity"],
+            result["metrics"]["boundary_continuity"],
+        )
+        self.assertEqual(
+            result["interpretation"]["sfs"],
+            "Estimated reference-free reconstruction score.",
         )
 
     def test_analyze_uses_uploaded_damage_mask(self):
@@ -467,6 +501,10 @@ class WebAppTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, response.data.decode())
         self.assertIn(b"1,600 added from your painted marks", response.data)
+        self.assertIn(b"Estimated SFS (reference-free)", response.data)
+        self.assertNotIn(b"Outside-mask preservation", response.data)
+        self.assertNotIn(b"Repair-boundary continuity", response.data)
+        self.assertNotIn(b"Structural Similarity", response.data)
         self.assertEqual(
             np.count_nonzero(reconstruction.call_args.args[1]), 40 * 40
         )
@@ -657,8 +695,12 @@ class WebAppTests(unittest.TestCase):
         ):
             self.assertNotIn(removed_step_label, response.data)
         self.assertNotIn(b"Start Over", response.data)
-        self.assertIn(b"What do these metrics mean?", response.data)
-        self.assertIn(b"ground-truth damage", response.data)
+        self.assertIn(b"Estimated Symmetry Fidelity Score", response.data)
+        self.assertNotIn(b"What do these metrics mean?", response.data)
+        self.assertIn(b"Estimated SFS (reference-free)", response.data)
+        self.assertNotIn(b"Outside-mask preservation", response.data)
+        self.assertNotIn(b"Repair-boundary continuity", response.data)
+        self.assertNotIn(b"Structural Similarity (SSIM)", response.data)
         self.assertIn(b"Open wallpaper-group chart", response.data)
         report_path = re.search(
             rb'href="([^"]+/report\.pdf)"', response.data
@@ -686,6 +728,23 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(pdf_response.status_code, 200)
         self.assertEqual(pdf_response.mimetype, "application/pdf")
         self.assertTrue(pdf_response.data.startswith(b"%PDF"))
+        pdf_stream = re.search(
+            rb"stream\r?\n(.*?)\r?\nendstream",
+            pdf_response.data,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(pdf_stream)
+        report_content = zlib.decompress(pdf_stream.group(1))
+        for metric_label in (
+            b"Estimated SFS \\(reference-free\\)",
+        ):
+            self.assertIn(metric_label, report_content)
+        for removed_metric_label in (
+            b"Outside-mask preservation",
+            b"Repair-boundary continuity",
+            b"Structural Similarity \\(SSIM\\)",
+        ):
+            self.assertNotIn(removed_metric_label, report_content)
         pdf_response.close()
 
 
