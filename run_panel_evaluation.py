@@ -1,8 +1,7 @@
-"""Run unit tests and the full synthetic system evaluation for a live demo.
+"""Run unit tests and the full synthetic system evaluation.
 
-This panel-oriented runner prints the evaluation method and result tables to
-the terminal. It does not run the slower algorithm benchmark or create a Word
-report.
+Prints the evaluation method and result tables to
+the terminal.
 """
 
 from __future__ import annotations
