@@ -1940,6 +1940,31 @@ h1 {
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.symmetry-status-indicator {
+  display: inline-block;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.symmetry-status-guided {
+  color: #218739;
+  background: #35bd59;
+  box-shadow: 0 0 0 3px rgb(53 189 89 / 16%);
+}
+
+.symmetry-status-not-guided {
+  color: #a82626;
+  background: #e44343;
+  box-shadow: 0 0 0 3px rgb(228 67 67 / 16%);
 }
 
 .comparison-grid {

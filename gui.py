@@ -1784,8 +1784,15 @@ class PatternGuardApp(tk.Tk):
             I_bgr_resized = cv2.resize(input_bgr, (256, 256))
             I_gray_eval = cv2.cvtColor(I_bgr_resized, cv2.COLOR_BGR2GRAY)
 
-            R_xx, a1, a2, theta_dom, detected_group = run_algorithm_i_autocorrelation(
-                I_gray_eval
+            (
+                R_xx,
+                a1,
+                a2,
+                theta_dom,
+                detected_group,
+                wallpaper_evidence,
+            ) = run_algorithm_i_autocorrelation(
+                I_gray_eval, include_evidence=True
             )
             M_mask, diff_map = run_algorithm_ii_defect_isolation(
                 I_bgr_resized, a1, a2
@@ -1795,7 +1802,12 @@ class PatternGuardApp(tk.Tk):
             no_defect_detected = defect_pixel_count == 0
 
             I_final_bgr = run_algorithm_iii_template_alignment(
-                I_bgr_resized, M_mask, a1, a2, symmetry_group=detected_group
+                I_bgr_resized,
+                M_mask,
+                a1,
+                a2,
+                symmetry_group=detected_group,
+                symmetry_evidence=wallpaper_evidence,
             )
 
             runtime_ms = (time.time() - start_time) * 1000

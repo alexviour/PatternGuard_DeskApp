@@ -106,7 +106,19 @@ class WebAppTests(unittest.TestCase):
                     with patch.object(
                         webapp,
                         "run_algorithm_iii_template_alignment",
-                        return_value=np.zeros((256, 256, 3), dtype=np.uint8),
+                        return_value=(
+                            np.zeros((256, 256, 3), dtype=np.uint8),
+                            {
+                                "status": "not_qualified",
+                                "qualified": False,
+                                "qualification_reason": "wallpaper_group_uncertain",
+                                "reason": "wallpaper_group_uncertain",
+                                "eligible_operations": [],
+                                "guided_region_count": 0,
+                                "fallback_region_count": 0,
+                                "regions": [],
+                            },
+                        ),
                     ):
                         with patch.object(
                             webapp,
@@ -122,6 +134,9 @@ class WebAppTests(unittest.TestCase):
         )
         self.assertEqual(
             result["report"]["category"], "Textile or repeating pattern"
+        )
+        self.assertEqual(
+            result["symmetry_reconstruction"]["status"], "not_qualified"
         )
 
     def test_homepage_loads(self):
@@ -404,7 +419,19 @@ class WebAppTests(unittest.TestCase):
             with patch.object(
                 webapp,
                 "run_algorithm_iii_template_alignment",
-                return_value=rgb_image,
+                return_value=(
+                    rgb_image,
+                    {
+                        "status": "qualified_no_transform_used",
+                        "qualified": True,
+                        "qualification_reason": None,
+                        "reason": "improvement_below_required_margin",
+                        "eligible_operations": ["mirror_h"],
+                        "guided_region_count": 0,
+                        "fallback_region_count": 1,
+                        "regions": [],
+                    },
+                ),
             ) as reconstruction:
                 with patch.object(webapp, "_get_classifier") as get_classifier:
                     get_classifier.return_value.predict.return_value = {
@@ -427,6 +454,7 @@ class WebAppTests(unittest.TestCase):
         image_buffer = io.BytesIO()
         Image.fromarray(rgb_image).save(image_buffer, format="PNG")
         image_buffer.seek(0)
+        image_bytes = image_buffer.getvalue()
 
         mask_pixels = np.zeros((256, 256, 4), dtype=np.uint8)
         mask_pixels[80:120, 100:140, :3] = (255, 35, 35)
@@ -436,6 +464,28 @@ class WebAppTests(unittest.TestCase):
         damage_mask = "data:image/png;base64," + base64.b64encode(
             mask_buffer.getvalue()
         ).decode("ascii")
+        status_results = [
+            {
+                "status": "qualified_no_transform_used",
+                "qualified": True,
+                "qualification_reason": None,
+                "reason": "no_repair_regions",
+                "eligible_operations": ["mirror_h"],
+                "guided_region_count": 0,
+                "fallback_region_count": 0,
+                "regions": [],
+            },
+            {
+                "status": "mixed",
+                "qualified": True,
+                "qualification_reason": None,
+                "reason": "some_regions_used_fallback_reconstruction",
+                "eligible_operations": ["mirror_h"],
+                "guided_region_count": 1,
+                "fallback_region_count": 1,
+                "regions": [],
+            },
+        ]
         with patch.object(
             webapp,
             "run_algorithm_ii_defect_isolation",
@@ -447,7 +497,10 @@ class WebAppTests(unittest.TestCase):
             with patch.object(
                 webapp,
                 "run_algorithm_iii_template_alignment",
-                return_value=np.zeros((256, 256, 3), dtype=np.uint8),
+                side_effect=[
+                    (np.zeros((256, 256, 3), dtype=np.uint8), status)
+                    for status in status_results
+                ],
             ) as reconstruction:
                 with patch.object(webapp, "_get_classifier") as get_classifier:
                     get_classifier.return_value.predict.return_value = {
@@ -459,13 +512,32 @@ class WebAppTests(unittest.TestCase):
                     response = self.client.post(
                         "/analyze",
                         data={
-                            "image": (image_buffer, "textile.png"),
+                            "image": (io.BytesIO(image_bytes), "textile.png"),
+                            "damage_mask": damage_mask,
+                        },
+                        content_type="multipart/form-data",
+                    )
+                    guided_response = self.client.post(
+                        "/analyze",
+                        data={
+                            "image": (io.BytesIO(image_bytes), "textile.png"),
                             "damage_mask": damage_mask,
                         },
                         content_type="multipart/form-data",
                     )
 
         self.assertEqual(response.status_code, 200, response.data.decode())
+        self.assertEqual(
+            guided_response.status_code, 200, guided_response.data.decode()
+        )
+        self.assertIn(
+            b'class="symmetry-status-indicator symmetry-status-not-guided"',
+            response.data,
+        )
+        self.assertIn(
+            b'class="symmetry-status-indicator symmetry-status-guided"',
+            guided_response.data,
+        )
         self.assertIn(b"1,600 added from your painted marks", response.data)
         self.assertEqual(
             np.count_nonzero(reconstruction.call_args.args[1]), 40 * 40
@@ -490,7 +562,16 @@ class WebAppTests(unittest.TestCase):
         def return_distinct_reconstruction(image, *_args, **_kwargs):
             reconstructed = image.copy()
             reconstructed[0, 0] = (12, 34, 56)
-            return reconstructed
+            return reconstructed, {
+                "status": "not_qualified",
+                "qualified": False,
+                "qualification_reason": "wallpaper_group_uncertain",
+                "reason": "wallpaper_group_uncertain",
+                "eligible_operations": [],
+                "guided_region_count": 0,
+                "fallback_region_count": 0,
+                "regions": [],
+            }
 
         with patch.object(webapp, "_get_classifier") as get_classifier:
             with patch.object(

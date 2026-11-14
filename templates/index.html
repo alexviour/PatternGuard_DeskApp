@@ -214,7 +214,14 @@
             <section class="wizard-step" data-step-panel="3" aria-labelledby="step-3-title" hidden>
               <div class="wizard-title">
                 <p class="eyebrow">RESTORED IMAGE</p>
-                <h3 id="step-3-title" tabindex="-1">Geometric reconstruction</h3>
+                <h3 id="step-3-title" tabindex="-1">
+                  Geometric reconstruction
+                  {% if result.symmetry_reconstruction.guided_region_count > 0 %}
+                    <span class="symmetry-status-indicator symmetry-status-guided" role="img" aria-label="Symmetry-guided"></span>
+                  {% else %}
+                    <span class="symmetry-status-indicator symmetry-status-not-guided" role="img" aria-label="Not symmetry-guided"></span>
+                  {% endif %}
+                </h3>
               </div>
               <section class="before-after" data-before-after aria-label="Before and after image comparison">
                 <div class="before-after-image">

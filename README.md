@@ -208,13 +208,24 @@ synthetic disk is a real textile defect.
    thresholds structural differences, then uses morphology to form a defect
    mask.
 6. **Donor patch search and calibration:** `run_algorithm_iii_template_alignment`
-   finds connected components in the mask, searches nearby lattice-aligned
-   candidate patches, and scores candidate borders with normalized
-   cross-correlation. It rejects donors overlapping the defect mask, then
-   adjusts donor color/contrast to the surrounding ring.
+   finds connected components in the mask, searches nearby clean candidate
+   patches, and scores candidate borders with normalized cross-correlation.
+   When the wallpaper-group operation votes and lattice vectors are reliable,
+   donor origins are registered to the repair window's lattice phase and
+   shortlisted at integer shifts of the measured lattice basis. It tests only
+   supported symmetry operations on those clean donors. Candidate transforms
+   are centered at lattice-derived positions, warped with padding to avoid
+   clipping, and scored against the undamaged boundary. A transformed donor
+   is used only when its boundary match improves meaningfully; donor overlap
+   with the defect mask is rejected, and the selected donor is calibrated to
+   the surrounding ring.
 7. **Reconstruction:** the calibrated donor patch is copied into the masked
-   region. If no suitable donor patch is found, the component is repaired with
-   OpenCV Telea inpainting.
+   region. If symmetry evidence is unavailable or inconclusive, or no
+   transformed candidate improves the boundary match, the existing
+   untransformed donor is retained. If no suitable donor patch is found, the
+   component is repaired with OpenCV Telea inpainting.
+   The web analysis result also keeps internal per-output symmetry status and
+   per-region selection evidence; these fields are not shown in the audit UI.
 8. **Review:** compare the damaged input and reconstructed output; the report
    also provides the FFT, local-deviation response, and binary mask so
    intermediate behavior can be reviewed.

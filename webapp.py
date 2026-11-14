@@ -494,8 +494,14 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
         defect_mask = cv2.bitwise_or(defect_mask, manual_damage_mask)
     detected_pixel_count = int(np.count_nonzero(defect_mask == 255))
     no_defect_detected = detected_pixel_count == 0
-    restored_bgr = run_algorithm_iii_template_alignment(
-        original_resized, defect_mask, a1, a2, symmetry_group=detected_group
+    restored_bgr, symmetry_reconstruction = run_algorithm_iii_template_alignment(
+        original_resized,
+        defect_mask,
+        a1,
+        a2,
+        symmetry_group=detected_group,
+        symmetry_evidence=wallpaper_evidence,
+        include_symmetry_evidence=True,
     )
 
     restored_gray = cv2.cvtColor(restored_bgr, cv2.COLOR_BGR2GRAY)
@@ -785,6 +791,7 @@ def _analyze_image(original_rgb, manual_damage_mask=None):
             "wallpaper_group": wallpaper_explanation,
         },
         "wallpaper_evidence": wallpaper_evidence_display,
+        "symmetry_reconstruction": symmetry_reconstruction,
         "metrics": {
             "sfs": score_text,
             "wallpaper_group": group,
