@@ -584,7 +584,7 @@ def run_algorithm_ii_defect_isolation(I_bgr, a1, a2):
     I_gray = cv2.cvtColor(I_bgr, cv2.COLOR_BGR2GRAY)
 
     # Target dark marks/holes
-    _, M_dark = cv2.threshold(I_gray, 25, 255, cv2.THRESH_BINARY_INV)
+    _, M_dark = cv2.threshold(I_gray, 35, 255, cv2.THRESH_BINARY_INV)
 
     # Detect scratches
     k_size = max(15, int(min(a1, a2) // 2))
@@ -601,12 +601,31 @@ def run_algorithm_ii_defect_isolation(I_bgr, a1, a2):
     M_lines = cv2.morphologyEx(M_structural, cv2.MORPH_OPEN, kernel_slant1)
     M_lines = cv2.bitwise_or(M_lines, cv2.morphologyEx(M_structural, cv2.MORPH_OPEN, kernel_slant2))
 
-    M_mask = cv2.bitwise_or(M_dark, M_lines)
+    M_mask = cv2.bitwise_or(M_dark, M_structural)
+    M_mask = cv2.bitwise_or(M_mask, M_lines)
+
+    kernel_clean = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    M_mask = cv2.morphologyEx(M_mask, cv2.MORPH_OPEN, kernel_clean)
+    M_mask = cv2.dilate(M_mask, kernel_clean, iterations=1)
 
     return M_mask, diff_map.astype(np.float32)
 
 
-def _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, local_comp_mask):
+def _find_exact_lattice_patch(
+    I_color,
+    M_mask,
+    y1,
+    y2,
+    x1,
+    x2,
+    step_y,
+    step_x,
+    local_comp_mask,
+    return_candidates=False,
+    candidate_limit=8,
+    lattice_basis=None,
+    lattice_phase_tolerance=0.16,
+):
     """Locates optimal non-defective lattice patch via border-ring NCC match."""
     h, w, _ = I_color.shape
     patch_h, patch_w = y2 - y1, x2 - x1
@@ -690,6 +709,83 @@ def _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, l
     if not np.any(valid_candidates):
         return None
 
+    if return_candidates:
+        flattened_scores = np.where(
+            valid_candidates, search_scores, -np.inf
+        ).ravel()
+        ordered_indices = np.argsort(flattened_scores)[::-1]
+        minimum_separation = max(4, min(patch_h, patch_w) // 4)
+        candidate_positions = []
+        candidates = []
+        registered_candidates = []
+        inverse_basis = (
+            np.linalg.inv(lattice_basis)
+            if lattice_basis is not None
+            else None
+        )
+        for flat_index in ordered_indices:
+            if (
+                inverse_basis is None
+                and len(candidates) >= candidate_limit
+            ) or (
+                inverse_basis is not None
+                and len(registered_candidates) >= candidate_limit
+            ) or not np.isfinite(
+                flattened_scores[flat_index]
+            ):
+                break
+            local_y, local_x = np.unravel_index(
+                flat_index, search_scores.shape
+            )
+            if any(
+                abs(local_y - selected_y) < minimum_separation
+                and abs(local_x - selected_x) < minimum_separation
+                for selected_y, selected_x in candidate_positions
+            ):
+                continue
+            candidate_positions.append((local_y, local_x))
+            cy1 = roi_y1 + score_y1 + int(local_y)
+            cx1 = roi_x1 + score_x1 + int(local_x)
+            candidate = {
+                "patch": I_color[
+                    cy1:cy1 + patch_h, cx1:cx1 + patch_w
+                ],
+                "origin": [int(cx1), int(cy1)],
+                "lattice_phase_anchor": [int(x1), int(y1)],
+                "search_ncc": float(flattened_scores[flat_index]),
+                "lattice_registered": False,
+                "lattice_cell_shift": None,
+                "lattice_phase_error": None,
+            }
+            if inverse_basis is not None:
+                displacement = np.array(
+                    [cx1 - x1, cy1 - y1], dtype=np.float64
+                )
+                cell_coordinates = inverse_basis @ displacement
+                cell_shift = np.rint(cell_coordinates).astype(np.int64)
+                phase_residual = cell_coordinates - cell_shift
+                phase_error = float(np.linalg.norm(phase_residual))
+                if phase_error <= lattice_phase_tolerance:
+                    candidate.update(
+                        {
+                            "lattice_registered": True,
+                            "lattice_cell_shift": [
+                                int(cell_shift[0]),
+                                int(cell_shift[1]),
+                            ],
+                            "lattice_phase_error": phase_error,
+                        }
+                    )
+                    registered_candidates.append(candidate)
+            if len(candidates) < candidate_limit:
+                candidates.append(candidate)
+            if (
+                len(candidates) >= candidate_limit
+                and len(registered_candidates) >= candidate_limit
+            ):
+                break
+        return registered_candidates or candidates or None
+
     best_index = np.argmax(
         np.where(valid_candidates, search_scores, -np.inf)
     )
@@ -699,10 +795,371 @@ def _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, l
     return I_color[cy1:cy1 + patch_h, cx1:cx1 + patch_w]
 
 
+def _wallpaper_lattice_basis(symmetry_evidence):
+    if not isinstance(symmetry_evidence, dict):
+        return None
+    lattice_evidence = symmetry_evidence.get("lattice", {})
+    lattice_vectors = (
+        lattice_evidence.get("vectors", [])
+        if isinstance(lattice_evidence, dict)
+        else []
+    )
+    if (
+        not isinstance(lattice_evidence, dict)
+        or not lattice_evidence.get("reliable", False)
+        or not isinstance(lattice_vectors, (list, tuple))
+        or len(lattice_vectors) != 2
+    ):
+        return None
+    try:
+        basis = np.array(
+            [
+                [lattice_vectors[0]["dx"], lattice_vectors[1]["dx"]],
+                [lattice_vectors[0]["dy"], lattice_vectors[1]["dy"]],
+            ],
+            dtype=np.float64,
+        )
+        if not np.all(np.isfinite(basis)) or abs(float(np.linalg.det(basis))) < 1e-6:
+            return None
+    except (KeyError, TypeError, ValueError):
+        return None
+    return basis
+
+
+def _wallpaper_symmetry_operations(symmetry_group, symmetry_evidence):
+    group_operations = {
+        "p2": {"rotation_180"},
+        "pm": {"mirror_h", "mirror_v"},
+        "pmm/cmm": {"mirror_h", "mirror_v", "rotation_180"},
+        "pmm": {"mirror_h", "mirror_v", "rotation_180"},
+        "cmm": {"mirror_h", "mirror_v", "rotation_180"},
+        "p4": {"rotation_90", "rotation_180"},
+        "p4m": {"mirror_h", "mirror_v", "rotation_90", "rotation_180"},
+    }
+    operation_matrices = {
+        "mirror_h": np.array([[-1.0, 0.0], [0.0, 1.0]]),
+        "mirror_v": np.array([[1.0, 0.0], [0.0, -1.0]]),
+        "rotation_90": np.array([[0.0, -1.0], [1.0, 0.0]]),
+        "rotation_180": np.array([[-1.0, 0.0], [0.0, -1.0]]),
+    }
+    if not isinstance(symmetry_evidence, dict):
+        return [], "symmetry_evidence_missing", None
+
+    if symmetry_evidence.get("classification_status") not in {
+        "classified",
+        "partial",
+    }:
+        return [], "wallpaper_group_uncertain", None
+    evidence_operations = symmetry_evidence.get("operations", {})
+    basis = _wallpaper_lattice_basis(symmetry_evidence)
+    if basis is None:
+        lattice = symmetry_evidence.get("lattice", {})
+        if not isinstance(lattice, dict) or not lattice.get("reliable", False):
+            return [], "lattice_unreliable", None
+        return [], "lattice_basis_invalid", None
+    if not isinstance(evidence_operations, dict):
+        return [], "symmetry_operation_evidence_missing", basis
+    inverse_basis = np.linalg.inv(basis)
+
+    allowed_operations = group_operations.get(symmetry_group, set())
+    if not allowed_operations:
+        return [], "wallpaper_group_has_no_supported_reconstruction_operations", basis
+
+    operations = []
+    for operation_name, operation in operation_matrices.items():
+        operation_evidence = evidence_operations.get(operation_name, {})
+        if (
+            operation_name not in allowed_operations
+            or not isinstance(operation_evidence, dict)
+            or not operation_evidence.get("passed", False)
+        ):
+            continue
+        image_matrix = basis @ operation @ inverse_basis
+        if not np.allclose(
+            image_matrix.T @ image_matrix, np.eye(2), atol=0.15
+        ):
+            continue
+        operations.append((operation_name, image_matrix))
+    if not operations:
+        return [], "no_group_supported_operation_passed", basis
+    return operations, None, basis
+
+
+def _wallpaper_symmetry_matrices(symmetry_group, symmetry_evidence):
+    operations, _, _ = _wallpaper_symmetry_operations(
+        symmetry_group, symmetry_evidence
+    )
+    return [matrix for _, matrix in operations]
+
+
+def _masked_patch_ncc(first, second, mask):
+    first_values = first[mask].astype(np.float64)
+    second_values = second[mask].astype(np.float64)
+    if first_values.size < 10:
+        return -1.0
+    first_values -= first_values.mean()
+    second_values -= second_values.mean()
+    denominator = np.linalg.norm(first_values) * np.linalg.norm(second_values)
+    if denominator < 1e-6:
+        return -1.0
+    return float(np.dot(first_values, second_values) / denominator)
+
+
+def _select_symmetry_equivalent_patch(
+    donor_patch,
+    target_patch,
+    ring_mask,
+    symmetry_matrices,
+    lattice_basis,
+    return_details=False,
+    minimum_improvement=0.03,
+):
+    details = {
+        "applied": False,
+        "operation": None,
+        "lattice_center_offset": None,
+        "baseline_ncc": None,
+        "best_candidate_ncc": None,
+        "selected_ncc": None,
+        "improvement": None,
+        "reason": "no_symmetry_candidate",
+    }
+
+    def _result(patch):
+        return (patch, details) if return_details else patch
+
+    if not symmetry_matrices or not np.any(ring_mask):
+        details["reason"] = (
+            "no_supported_symmetry_operation"
+            if not symmetry_matrices
+            else "insufficient_undamaged_boundary"
+        )
+        return _result(donor_patch)
+
+    target_gray = cv2.cvtColor(target_patch, cv2.COLOR_BGR2GRAY)
+    donor_gray = cv2.cvtColor(donor_patch, cv2.COLOR_BGR2GRAY)
+    baseline_score = _masked_patch_ncc(target_gray, donor_gray, ring_mask)
+    details["baseline_ncc"] = baseline_score
+    details["best_candidate_ncc"] = baseline_score
+    details["selected_ncc"] = baseline_score
+    details["improvement"] = 0.0
+    details["reason"] = "improvement_below_required_margin"
+    best_patch = donor_patch
+    best_score = baseline_score
+    height, width = donor_patch.shape[:2]
+    patch_center = np.array([(width - 1) / 2.0, (height - 1) / 2.0])
+    center_offsets = (
+        lattice_basis
+        @ np.array(
+            [
+                [x_fraction, y_fraction]
+                for y_fraction in (-0.5, -0.25, 0.0, 0.25)
+                for x_fraction in (-0.5, -0.25, 0.0, 0.25)
+            ],
+            dtype=np.float64,
+        ).T
+    ).T
+    padding = max(height, width)
+    padded_donor = cv2.copyMakeBorder(
+        donor_patch,
+        padding,
+        padding,
+        padding,
+        padding,
+        cv2.BORDER_REFLECT_101,
+    )
+    padded_center_offset = np.array([padding, padding], dtype=np.float64)
+
+    for center_offset in center_offsets:
+        center = patch_center + center_offset
+        padded_center = padded_center_offset + center
+        for operation in symmetry_matrices:
+            if isinstance(operation, tuple):
+                operation_name, linear = operation
+            else:
+                operation_name, linear = "unknown", operation
+            affine_offset = padded_center - linear @ padded_center
+            affine = np.column_stack((linear, affine_offset)).astype(np.float32)
+            transformed_padded = cv2.warpAffine(
+                padded_donor,
+                affine,
+                (padded_donor.shape[1], padded_donor.shape[0]),
+                flags=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_REFLECT_101,
+            )
+            transformed = transformed_padded[
+                padding:padding + height, padding:padding + width
+            ]
+            transformed_gray = cv2.cvtColor(transformed, cv2.COLOR_BGR2GRAY)
+            score = _masked_patch_ncc(target_gray, transformed_gray, ring_mask)
+            if score > best_score:
+                best_patch = transformed
+                best_score = score
+                details.update(
+                    {
+                        "operation": operation_name,
+                        "best_candidate_ncc": score,
+                        "improvement": score - baseline_score,
+                        "lattice_center_offset": [
+                            float(center_offset[0]),
+                            float(center_offset[1]),
+                        ],
+                    }
+                )
+    if best_score < baseline_score + minimum_improvement:
+        return _result(donor_patch)
+    details.update(
+        {
+            "applied": True,
+            "selected_ncc": best_score,
+            "improvement": best_score - baseline_score,
+            "reason": None,
+        }
+    )
+    return _result(best_patch)
+
+
+def _select_symmetry_donor_candidate(
+    candidates,
+    target_patch,
+    ring_mask,
+    symmetry_operations,
+    lattice_basis,
+):
+    normalized_candidates = [
+        candidate
+        if isinstance(candidate, dict)
+        else {"patch": candidate, "origin": None}
+        for candidate in candidates
+    ]
+    target_gray = cv2.cvtColor(target_patch, cv2.COLOR_BGR2GRAY)
+    baseline_candidate = max(
+        normalized_candidates,
+        key=lambda candidate: _masked_patch_ncc(
+            target_gray,
+            cv2.cvtColor(candidate["patch"], cv2.COLOR_BGR2GRAY),
+            ring_mask,
+        ),
+    )
+    baseline_patch = baseline_candidate["patch"]
+    baseline_ncc = _masked_patch_ncc(
+        target_gray,
+        cv2.cvtColor(baseline_patch, cv2.COLOR_BGR2GRAY),
+        ring_mask,
+    )
+    details = {
+        "applied": False,
+        "operation": None,
+        "lattice_center_offset": None,
+        "donor_origin": baseline_candidate.get("origin"),
+        "lattice_phase_anchor": baseline_candidate.get(
+            "lattice_phase_anchor"
+        ),
+        "lattice_registered": baseline_candidate.get(
+            "lattice_registered", False
+        ),
+        "lattice_cell_shift": baseline_candidate.get(
+            "lattice_cell_shift"
+        ),
+        "lattice_phase_error": baseline_candidate.get(
+            "lattice_phase_error"
+        ),
+        "baseline_ncc": baseline_ncc,
+        "best_candidate_ncc": baseline_ncc,
+        "selected_ncc": baseline_ncc,
+        "improvement": 0.0,
+        "reason": "improvement_below_required_margin",
+    }
+    registered_candidates = [
+        candidate
+        for candidate in normalized_candidates
+        if candidate.get("lattice_registered", False)
+    ]
+    if not registered_candidates:
+        details["reason"] = "no_lattice_registered_donor_candidate"
+        return baseline_patch, details
+    if not symmetry_operations or not np.any(ring_mask):
+        details["reason"] = (
+            "no_supported_symmetry_operation"
+            if not symmetry_operations
+            else "insufficient_undamaged_boundary"
+        )
+        return baseline_patch, details
+
+    best_transformed_patch = None
+    best_transformed_ncc = baseline_ncc
+    best_transformed_details = None
+    best_transformed_candidate = None
+    for candidate in registered_candidates:
+        transformed_patch, transformed_details = (
+            _select_symmetry_equivalent_patch(
+                candidate["patch"],
+                target_patch,
+                ring_mask,
+                symmetry_operations,
+                lattice_basis,
+                return_details=True,
+                minimum_improvement=0.0,
+            )
+        )
+        candidate_ncc = transformed_details["best_candidate_ncc"]
+        if (
+            transformed_details["applied"]
+            and candidate_ncc is not None
+            and candidate_ncc > best_transformed_ncc
+        ):
+            best_transformed_patch = transformed_patch
+            best_transformed_ncc = candidate_ncc
+            best_transformed_details = transformed_details
+            best_transformed_candidate = candidate
+
+    if (
+        best_transformed_patch is None
+        or best_transformed_ncc < baseline_ncc + 0.03
+    ):
+        return baseline_patch, details
+
+    details.update(
+        {
+            "applied": True,
+            "operation": best_transformed_details["operation"],
+            "lattice_center_offset": best_transformed_details[
+                "lattice_center_offset"
+            ],
+            "donor_origin": best_transformed_candidate.get("origin"),
+            "lattice_phase_anchor": best_transformed_candidate.get(
+                "lattice_phase_anchor"
+            ),
+            "lattice_registered": True,
+            "lattice_cell_shift": best_transformed_candidate.get(
+                "lattice_cell_shift"
+            ),
+            "lattice_phase_error": best_transformed_candidate.get(
+                "lattice_phase_error"
+            ),
+            "best_candidate_ncc": best_transformed_ncc,
+            "selected_ncc": best_transformed_ncc,
+            "improvement": best_transformed_ncc - baseline_ncc,
+            "reason": None,
+        }
+    )
+    return best_transformed_patch, details
+
+
 """ Lattice-Guided Fabric Reconstruction Engine."""
 
 
-def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24, stride=1, symmetry_group="p1"):
+def run_algorithm_iii_template_alignment(
+    I_color,
+    M_mask,
+    a1,
+    a2,
+    patch_size=24,
+    stride=1,
+    symmetry_group="p1",
+    symmetry_evidence=None,
+    include_symmetry_evidence=False,
+):
     h, w, _ = I_color.shape
     I_out = I_color.copy()
 
@@ -710,12 +1167,48 @@ def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24,
         M_mask = M_mask[:, :, 0]
 
     if np.count_nonzero(M_mask) == 0:
+        if include_symmetry_evidence:
+            operations, reason, _ = _wallpaper_symmetry_operations(
+                symmetry_group, symmetry_evidence
+            )
+            status = (
+                "qualified_no_transform_used"
+                if operations
+                else "not_qualified"
+            )
+            return I_color, {
+                "status": status,
+                "qualified": bool(operations),
+                "qualification_reason": reason,
+                "reason": "no_repair_regions",
+                "eligible_operations": [
+                    name for name, _ in operations
+                ],
+                "guided_region_count": 0,
+                "fallback_region_count": 0,
+                "regions": [],
+            }
         return I_color
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(M_mask)
 
     step_y = max(16, int(a1))
     step_x = max(16, int(a2))
+    symmetry_operations, qualification_reason, lattice_basis = _wallpaper_symmetry_operations(
+        symmetry_group, symmetry_evidence
+    )
+    symmetry_result = {
+        "status": "not_qualified",
+        "qualified": bool(symmetry_operations),
+        "qualification_reason": qualification_reason,
+        "reason": qualification_reason,
+        "eligible_operations": [
+            name for name, _ in symmetry_operations
+        ],
+        "guided_region_count": 0,
+        "fallback_region_count": 0,
+        "regions": [],
+    }
 
     for label in range(1, num_labels):
         comp_mask = (labels == label).astype(np.uint8) * 255
@@ -734,23 +1227,81 @@ def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24,
         x1, x2 = max(0, x - pad), min(w, x + bw + pad)
 
         local_comp_mask = comp_mask[y1:y2, x1:x2]
+        region_result = {
+            "component": int(label),
+            "bbox": [int(x), int(y), int(bw), int(bh)],
+            "repair_method": None,
+            "symmetry": None,
+        }
 
-        donor_patch = _find_exact_lattice_patch(I_color, M_mask, y1, y2, x1, x2, step_y, step_x, local_comp_mask)
+        donor_search_result = _find_exact_lattice_patch(
+            I_color,
+            M_mask,
+            y1,
+            y2,
+            x1,
+            x2,
+            step_y,
+            step_x,
+            local_comp_mask,
+            return_candidates=bool(symmetry_operations),
+            lattice_basis=(
+                lattice_basis if symmetry_operations else None
+            ),
+        )
+        if symmetry_operations and donor_search_result is not None:
+            donor_candidates = (
+                donor_search_result
+                if isinstance(donor_search_result, list)
+                else [donor_search_result]
+            )
+            donor_patch = None
+        else:
+            donor_candidates = []
+            donor_patch = donor_search_result
 
-        if donor_patch is not None and donor_patch.shape[:2] == (y2 - y1, x2 - x1):
+        has_donor = (
+            bool(donor_candidates)
+            if symmetry_operations
+            else donor_patch is not None
+            and donor_patch.shape[:2] == (y2 - y1, x2 - x1)
+        )
+        if has_donor:
             local_mask = comp_mask[y1:y2, x1:x2]
             repair_mask = cv2.dilate(
                 local_mask,
                 cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
                 iterations=1,
             ) > 0
-            target_patch = I_color[y1:y2, x1:x2].astype(np.float32)
-            calibrated_donor = donor_patch.astype(np.float32)
             ring_mask = cv2.dilate(
                 local_mask,
                 cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
             ) > 0
-            ring_mask &= local_mask == 0
+            ring_mask &= M_mask[y1:y2, x1:x2] == 0
+            if symmetry_operations:
+                donor_patch, symmetry_selection = (
+                    _select_symmetry_donor_candidate(
+                        donor_candidates,
+                        I_color[y1:y2, x1:x2],
+                        ring_mask,
+                        symmetry_operations,
+                        lattice_basis,
+                    )
+                )
+            else:
+                donor_patch, symmetry_selection = (
+                    _select_symmetry_equivalent_patch(
+                        donor_patch,
+                        I_color[y1:y2, x1:x2],
+                        ring_mask,
+                        symmetry_operations,
+                        lattice_basis,
+                        return_details=True,
+                    )
+                )
+            region_result["symmetry"] = symmetry_selection
+            target_patch = I_color[y1:y2, x1:x2].astype(np.float32)
+            calibrated_donor = donor_patch.astype(np.float32)
             if np.count_nonzero(ring_mask) > 10:
                 for channel in range(I_color.shape[2]):
                     source_values = calibrated_donor[:, :, channel][ring_mask]
@@ -774,10 +1325,54 @@ def run_algorithm_iii_template_alignment(I_color, M_mask, a1, a2, patch_size=24,
 
             repaired_patch = np.clip(calibrated_donor, 0, 255).astype(np.uint8)
             I_out[y1:y2, x1:x2][repair_mask] = repaired_patch[repair_mask]
+            region_result["repair_method"] = (
+                "symmetry_donor"
+                if symmetry_selection["applied"]
+                else "donor"
+            )
 
         else:
             # Boundary fallback
             dilated_mask = cv2.dilate(comp_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=1)
             I_out = cv2.inpaint(I_out, dilated_mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
+            region_result["repair_method"] = "telea"
+            region_result["symmetry"] = {
+                "applied": False,
+                "operation": None,
+                "lattice_center_offset": None,
+                "baseline_ncc": None,
+                "best_candidate_ncc": None,
+                "selected_ncc": None,
+                "improvement": None,
+                "reason": "no_clean_donor_found",
+            }
 
-    return I_out
+        symmetry_result["regions"].append(region_result)
+        if region_result["repair_method"] == "symmetry_donor":
+            symmetry_result["guided_region_count"] += 1
+        else:
+            symmetry_result["fallback_region_count"] += 1
+
+    if not symmetry_operations:
+        symmetry_result["status"] = "not_qualified"
+    elif symmetry_result["guided_region_count"] == 0:
+        symmetry_result["status"] = "qualified_no_transform_used"
+        if symmetry_result["regions"]:
+            reasons = [
+                region["symmetry"]["reason"]
+                for region in symmetry_result["regions"]
+                if region["symmetry"] is not None
+            ]
+            symmetry_result["reason"] = (
+                reasons[0] if reasons else "no_transform_selected"
+            )
+        else:
+            symmetry_result["reason"] = "no_repair_regions"
+    elif symmetry_result["fallback_region_count"]:
+        symmetry_result["status"] = "mixed"
+        symmetry_result["reason"] = "some_regions_used_fallback_reconstruction"
+    else:
+        symmetry_result["status"] = "symmetry_guided"
+        symmetry_result["reason"] = "all_repaired_regions_used_symmetry_donors"
+
+    return (I_out, symmetry_result) if include_symmetry_evidence else I_out

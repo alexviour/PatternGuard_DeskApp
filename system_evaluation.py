@@ -345,8 +345,15 @@ def _system_component_evaluation(
         clean = _load_square_bgr(image_path)
         clean_gray = cv2.cvtColor(clean, cv2.COLOR_BGR2GRAY)
         started = time.perf_counter()
-        _, a1, a2, _, predicted_group = run_algorithm_i_autocorrelation(
-            clean_gray
+        (
+            _,
+            a1,
+            a2,
+            _,
+            predicted_group,
+            symmetry_evidence,
+        ) = run_algorithm_i_autocorrelation(
+            clean_gray, include_evidence=True
         )
         group_elapsed_ms = (time.perf_counter() - started) * 1000.0
         group_times.append(group_elapsed_ms)
@@ -383,6 +390,7 @@ def _system_component_evaluation(
                 a1,
                 a2,
                 symmetry_group=predicted_group,
+                symmetry_evidence=symmetry_evidence,
             )
             restoration_ms = (time.perf_counter() - started) * 1000.0
 

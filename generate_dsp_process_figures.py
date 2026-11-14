@@ -288,6 +288,7 @@ def main() -> None:
         a1,
         a2,
         symmetry_group=group,
+        symmetry_evidence=evidence,
     )
     _save_figures(
         args.output_dir,
